@@ -108,29 +108,19 @@ ancho del lienzo, así que un vídeo más estrecho se amplía para cubrirlo. Si 
 avisa de que se verá pixelado, es por eso, y no hay recodificación que lo
 arregle.
 
-## Requisitos
+## Requisitos y desarrollo
 
-- Node.js >= 20
+Esto vive en el [taller](../README.md), así que `npm install` y `npm run dev` se
+lanzan **desde la raíz del repositorio**, no desde aquí:
 
 ```bash
 npm install
-```
-
-## Desarrollo
-
-```bash
 npm run dev
 ```
 
-## Publicar
-
-```bash
-npm run build
-```
-
-La build sale en `dist/` con rutas relativas, así que funciona tanto en GitHub
-Pages como abriendo el HTML directamente. El workflow de `.github/workflows`
-despliega a Pages en cada push a `main`.
+El servidor sirve las tres a la vez; esta responde en `/videomemegenerator/`. `npm run build`
+las monta las tres en `dist/`, con rutas relativas, y el workflow de
+`.github/workflows` despliega a Pages en cada push a `main`.
 
 ## De dónde salen las medidas
 
@@ -391,6 +381,7 @@ euro.
 | `src/render.ts` | El ajuste del rótulo y del CTA, y el dibujo sobre el lienzo. No toca el DOM. |
 | `src/encode.ts` | ffmpeg en WebAssembly: de la plantilla y el rectángulo al MP4. |
 | `src/main.ts` | La interfaz: carga del vídeo, encuadre, colores, CTA y descarga. |
+| `../comun/` | Lo que comparten las tres: la piel, la barra de herramientas y la consulta a LanguageTool. |
 
 ## Aspecto
 
@@ -406,13 +397,14 @@ GitHub Pages, así que sirviendo en local solo responde en `localhost` la que
 tengas levantada; las otras saltan a la publicada. Por debajo de 560 px se
 quedan los nombres cortos, que los tres enteros no caben.
 
-Es solo la piel. Los colores viven en las variables de `src/style.css`, así que
+Es solo la piel. Los colores viven en las variables de `comun/piel.css`, que
+cargan las tres, y lo propio de esta va en su `src/style.css`, así que
 el MP4 que se monta no se entera de nada. La cama del vídeo sigue siendo oscura
 a propósito (`--ink`): la imagen se juzga sobre negro de estudio, no sobre rosa.
 
 ## Parientes
 
-- [news-maker](../news-maker) — las noticias de Cabronazi, 1080 × 1350, también
+- [news-maker](../news-maker/README.md) — las noticias de Cabronazi, 1080 × 1350, también
   clavado sobre su PSD.
-- [memegenerator](../memegenerator) — la banda con el texto arriba y la foto
+- [memegenerator](../memegenerator/README.md) — la banda con el texto arriba y la foto
   debajo, sin plantilla fija.

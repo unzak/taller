@@ -1,0 +1,23 @@
+# Dependencias
+node_modules/
+
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Build / salida
+dist/
+build/
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Material de prueba: las referencias exportadas de los PSD y los clips con los
+# que se comprueba el montaje. No se publican.
+*/public/_ref.png
+*/public/_test-*
+_out.mp4

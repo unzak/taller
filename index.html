@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Taller Cabronazi</title>
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#ed1470" />
+    <meta
+      name="description"
+      content="Las tres herramientas de la casa: News Maker, Meme Generator y Video Meme Generator."
+    />
+    <link rel="icon" type="image/svg+xml" href="./comun/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Lo rellena `comun/nav.ts`, igual que en las tres herramientas. -->
+    <nav class="tools" aria-label="Herramientas"></nav>
+
+    <header class="top">
+      <div class="brand-kicker"><span class="live-dot"></span> Taller Cabronazi</div>
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="./comun/favicon.svg"
+          alt=""
+          width="96"
+          height="96"
+          decoding="async"
+        />
+        <h1>Taller Cabronazi</h1>
+      </div>
+    </header>
+
+    <main class="portada">
+      <p class="portada-entrada">
+        Las tres herramientas de la casa. Todo se monta en el navegador: no hay
+        servidor, no hay nada que instalar y nada de lo que sueltas aquí sale de
+        tu equipo.
+      </p>
+      <div class="portada-fichas" id="fichas"></div>
+    </main>
+
+    <script type="module" src="./comun/portada.ts"></script>
+  </body>
+</html>

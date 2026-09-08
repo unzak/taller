@@ -6,7 +6,7 @@
     <title>Meme Generator · Cabronazi</title>
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#ed1470" />
-    <link rel="icon" type="image/svg+xml" href="/src/assets/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="./src/assets/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
@@ -21,60 +21,18 @@
   </head>
   <body>
     <!--
-      El menu de las tres herramientas. Los enlaces apuntan a GitHub Pages, que
-      es donde vive cada una; en local solo responde en localhost la que se
-      esta sirviendo, las otras dos saltan a la publicada.
+      El menu de las tres herramientas. Va vacio a proposito: lo rellena
+      `comun/nav.ts`, que es quien sabe cuales son las tres y donde estan.
+      El alto lo reserva la piel, asi que no hay salto al rellenarlo.
     -->
-    <nav class="tools" aria-label="Herramientas">
-      <div class="tools-inner">
-        <a
-          class="tool"
-          href="https://unzak.github.io/news-maker/"
-          aria-label="News Maker"
-        >
-          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
-            <rect x="4" y="3" width="16" height="18" rx="2.5" />
-            <path d="M8 8h8M8 12h8M8 16h5" />
-          </svg>
-          <span class="tool-name">News Maker</span>
-          <span class="tool-name-short" aria-hidden="true">News</span>
-        </a>
-        <a
-          class="tool is-current"
-          href="https://unzak.github.io/memegenerator/"
-          aria-label="Meme Generator"
-          aria-current="page"
-        >
-          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
-            <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
-            <circle cx="8.6" cy="10" r="1.5" />
-            <path d="m4.5 17.5 4.4-4.4a1.8 1.8 0 0 1 2.6 0l5 5" />
-          </svg>
-          <span class="tool-name">Meme Generator</span>
-          <span class="tool-name-short" aria-hidden="true">Meme</span>
-        </a>
-        <a
-          class="tool"
-          href="https://unzak.github.io/videomemegenerator/"
-          aria-label="Video Meme Generator"
-        >
-          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="16" rx="2.5" />
-            <path d="M3 9h18" />
-            <path d="m7.6 4 2.4 5M13.1 4l2.4 5" />
-          </svg>
-          <span class="tool-name">Video Meme Generator</span>
-          <span class="tool-name-short" aria-hidden="true">Video</span>
-        </a>
-      </div>
-    </nav>
+    <nav class="tools" aria-label="Herramientas"></nav>
 
     <header class="top">
       <div class="brand-kicker"><span class="live-dot"></span> Taller Cabronazi</div>
       <div class="brand">
         <img
           class="brand-logo"
-          src="/src/assets/favicon.svg"
+          src="./src/assets/favicon.svg"
           alt=""
           width="96"
           height="96"
@@ -202,6 +160,6 @@
       ></canvas>
     </div>
 
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

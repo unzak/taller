@@ -18,8 +18,13 @@ import {
   type PhotoTransform,
   type RenderOptions,
 } from "./render.js";
-import { applyFixes, check, type Issue } from "./spell.js";
+import { nav } from "../../comun/nav.js";
+import { applyFixes, check, type Issue } from "../../comun/spell.js";
 import "./style.css";
+
+// La barra de las tres, lo primero: el hueco ya tiene su alto reservado en la
+// piel, asi que rellenarlo no mueve nada de sitio.
+nav("memegenerator");
 
 function need<T extends Element>(id: string): T {
   const el = document.getElementById(id);

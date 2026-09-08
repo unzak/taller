@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       # `npm ci` llego a colgarse 7 minutos en silencio con la cache ya
       # restaurada: espera de red. --no-audit quita la consulta de

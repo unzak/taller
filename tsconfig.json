@@ -12,5 +12,5 @@
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts", "vite.config.ts"]
+  "include": ["comun/**/*.ts", "*/src/**/*.ts", "vite.config.ts"]
 }

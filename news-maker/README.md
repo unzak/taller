@@ -47,23 +47,19 @@ justo lo que se iba a pulsar.
 El titular se ajusta solo: parte las líneas donde toca y, si es muy largo,
 reduce el cuerpo hasta que quepa sin invadir el filete ni el borde inferior.
 
-## Requisitos
+## Requisitos y desarrollo
 
-- Node.js >= 20
+Esto vive en el [taller](../README.md), así que `npm install` y `npm run dev` se
+lanzan **desde la raíz del repositorio**, no desde aquí:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Para publicar la versión estática:
-
-```bash
-npm run build
-```
-
-Queda en `dist/`, con rutas relativas, así que sirve tal cual en GitHub Pages o
-abriendo el HTML directamente.
+El servidor sirve las tres a la vez; esta responde en `/news-maker/`. `npm run build`
+las monta las tres en `dist/`, con rutas relativas, y el workflow de
+`.github/workflows` despliega a Pages en cada push a `main`.
 
 ## De dónde salen las medidas
 
@@ -171,7 +167,8 @@ GitHub Pages, así que sirviendo en local solo responde en `localhost` la que
 tengas levantada; las otras saltan a la publicada. Por debajo de 560 px se
 quedan los nombres cortos, que los tres enteros no caben.
 
-Es solo la piel. Los colores viven en las variables de `src/style.css`, así que
+Es solo la piel. Los colores viven en las variables de `comun/piel.css`, que
+cargan las tres, y lo propio de esta va en su `src/style.css`, así que
 el PNG que se descarga no se entera de nada. La cama del lienzo sigue siendo
 oscura a propósito (`--ink`): la foto se juzga sobre negro de estudio, no sobre
 rosa.

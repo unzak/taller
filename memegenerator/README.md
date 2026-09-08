@@ -2,7 +2,7 @@
 
 Generador de memes rotulados: una **banda con el texto arriba** y la **foto
 debajo**. Sin logo y sin plantilla fija, al contrario que
-[news-maker](../news-maker), que reproduce el PSD de las noticias de Cabronazi.
+[news-maker](../news-maker/README.md), que reproduce el PSD de las noticias de Cabronazi.
 
 El lienzo es siempre **1080 × 1350**, el 4:5 de Facebook.
 
@@ -99,32 +99,22 @@ Sus condiciones obligan a un enlace visible a languagetool.org sin
 `rel="nofollow"`, que va junto al aviso.
 
 Si algún día levantas un LanguageTool propio (es LGPL y hay imagen de Docker),
-basta cambiar `ENDPOINT` en `src/spell.ts`: ahí se caen los límites, las
+basta cambiar `ENDPOINT` en `../comun/spell.ts`: ahí se caen los límites, las
 condiciones y el enlace obligatorio.
 
-## Requisitos
+## Requisitos y desarrollo
 
-- Node.js >= 20
+Esto vive en el [taller](../README.md), así que `npm install` y `npm run dev` se
+lanzan **desde la raíz del repositorio**, no desde aquí:
 
 ```bash
 npm install
-```
-
-## Desarrollo
-
-```bash
 npm run dev
 ```
 
-## Publicar
-
-```bash
-npm run build
-```
-
-La build sale en `dist/` con rutas relativas, así que funciona tanto en GitHub
-Pages como abriendo el HTML directamente. El workflow de `.github/workflows`
-despliega a Pages en cada push a `main`.
+El servidor sirve las tres a la vez; esta responde en `/memegenerator/`. `npm run build`
+las monta las tres en `dist/`, con rutas relativas, y el workflow de
+`.github/workflows` despliega a Pages en cada push a `main`.
 
 ## Estructura
 
@@ -134,7 +124,7 @@ despliega a Pages en cada push a `main`.
 | `src/format.ts` | Las medidas, la tipografía y la paleta. Es lo único que hay que tocar para cambiar el diseño. |
 | `src/render.ts` | El ajuste del texto y el dibujo sobre el lienzo. No toca el DOM. |
 | `src/main.ts` | La interfaz: carga de foto, encuadre, colores y descarga. |
-| `src/spell.ts` | La consulta a LanguageTool. No toca el DOM. |
+| `../comun/` | Lo que comparten las tres: la piel, la barra de herramientas y la consulta a LanguageTool. |
 
 ## Aspecto
 
@@ -150,7 +140,8 @@ GitHub Pages, así que sirviendo en local solo responde en `localhost` la que
 tengas levantada; las otras saltan a la publicada. Por debajo de 560 px se
 quedan los nombres cortos, que los tres enteros no caben.
 
-Es solo la piel. Los colores viven en las variables de `src/style.css`, así que
+Es solo la piel. Los colores viven en las variables de `comun/piel.css`, que
+cargan las tres, y lo propio de esta va en su `src/style.css`, así que
 el PNG que se descarga no se entera de nada. Lo único que cambió de sitio es la
 cuadrícula de detrás del lienzo, ahora en rosa claro: sigue estando para ver
 dónde acaba una foto clara sobre la banda blanca.

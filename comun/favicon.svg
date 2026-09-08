@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!--
+    El icono del taller. Mismo cuadro que los de las tres herramientas -mismas
+    esquinas, mismo margen- para que se lean como una familia, en el rosa
+    #ED1470 del panel Pulso Viral, que es el acento de la casa.
+  -->
+  <rect x="36" y="36" width="440" height="440" rx="84" fill="#ED1470"/>
+
+  <!--
+    Tres piezas blancas, dos y una: son las tres herramientas, y la de abajo va
+    centrada bajo el hueco de las de arriba para que el conjunto no quede
+    cargado a un lado.
+  -->
+  <rect x="113" y="113" width="130" height="130" rx="32" fill="#FFFFFF"/>
+  <rect x="269" y="113" width="130" height="130" rx="32" fill="#FFFFFF"/>
+  <rect x="191" y="269" width="130" height="130" rx="32" fill="#FFFFFF"/>
+</svg>

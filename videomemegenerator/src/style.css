@@ -1,4 +1,12 @@
 /*
+ * Lo propio de esta herramienta. La piel comun —la paleta, la barra de las
+ * tres, la cabecera, los paneles y los campos— vive en `comun/piel.css`, que se
+ * carga aqui arriba; lo de abajo es lo que solo pasa aqui, incluido lo que pisa
+ * a proposito a la piel.
+ */
+@import "../../comun/piel.css";
+
+/*
  * SF Pro Display Bold, que es la que lleva la capa TEXTO del PSD. El .otf
  * original pesa 5,1 MB porque trae 30.853 glifos; aqui va reducido a Latin y
  * en woff2, 51 KB, sin perder acentos, eñes, ¿¡, comillas angulares ni el
@@ -10,233 +18,6 @@
   font-weight: 700;
   font-style: normal;
   font-display: swap;
-}
-
-/*
- * La paleta del panel Pulso Viral (noticias-virales): fondo rosa muy claro,
- * papel blanco, el rosa #ed1470 de acento y sombras rosadas en vez de negras.
- * Los nombres son los de siempre, asi que el resto de la hoja no se entera.
- */
-:root {
-  --bg: #fff7fb;
-  --panel: #ffffff;
-  --panel-2: #fff0f7;
-  --line: #efd5e2;
-  --text: #28151f;
-  --muted: #806b76;
-  --accent: #ed1470;
-  --accent-hover: #c8105e;
-  --accent-soft: rgba(237, 20, 112, 0.09);
-  --error: #c72d55;
-  /*
-   * La cama de los lienzos sigue siendo oscura: la foto y el video se juzgan
-   * sobre negro de estudio, no sobre rosa.
-   */
-  --ink: #0e1015;
-  --shadow: 0 8px 24px rgba(117, 35, 73, 0.06);
-  /* El alto de la barra de herramientas, que las previas pegajosas
-     tienen que descontar para no meterse debajo. */
-  --nav-h: 54px;
-  --radius: 16px;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-/*
- * Los degradados van en una capa fija, como en el panel. Puestos sobre el body
- * sus centros en porcentaje se calculan sobre el alto del documento, asi que en
- * una pagina larga se irian fuera de la vista y el fondo se veria plano.
- */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 85% -10%, rgba(237, 20, 112, 0.15), transparent 33rem),
-    radial-gradient(circle at -10% 20%, rgba(255, 190, 218, 0.25), transparent 28rem);
-}
-
-body {
-  margin: 0;
-  padding: 0 24px 64px;
-  min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-/*
- * El menu de las tres herramientas. Va pegado arriba y a sangre: el body tiene
- * su margen lateral, asi que la barra lo descuenta para llegar a los bordes.
- */
-.tools {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  margin: 0 -24px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--line);
-  box-shadow: 0 6px 18px rgba(117, 35, 73, 0.05);
-  overflow-x: auto;
-  /*
-   * La barra de desplazamiento sobra: con tres enlaces solo hace falta rodar
-   * en lo estrecho, y ahi se arrastra con el dedo.
-   */
-  scrollbar-width: none;
-}
-
-.tools::-webkit-scrollbar {
-  display: none;
-}
-
-/*
- * `max-content` con margenes automaticos: centrado mientras quepa, y pegado al
- * principio en cuanto no quepa. Con `justify-content: center` a secas, lo que
- * se sale por la izquierda no hay forma de alcanzarlo.
- */
-.tools-inner {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  min-width: max-content;
-  margin: 0 auto;
-  padding: 8px 24px;
-}
-
-.tool {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 14px;
-  border-radius: 999px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.tool svg {
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0.55;
-}
-
-.tool:hover {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.tool:hover svg,
-.tool.is-current svg {
-  opacity: 1;
-}
-
-.tool:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* La herramienta abierta, en la pastilla rosa. */
-.tool.is-current {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(237, 20, 112, 0.24);
-}
-
-.tool-name-short {
-  display: none;
-}
-
-/*
- * Los tres nombres enteros piden 480 px y un movil da 390: por debajo de 560
- * se queda la primera palabra de cada uno. El nombre completo sigue estando en
- * el `aria-label` del enlace.
- */
-@media (max-width: 560px) {
-  .tool-name {
-    display: none;
-  }
-
-  .tool-name-short {
-    display: inline;
-  }
-}
-
-.top {
-  max-width: 1180px;
-  margin: 0 auto 26px;
-  padding: 38px 0 22px;
-  border-bottom: 1px solid var(--line);
-}
-
-/* El rotulo con el punto rosa, la firma de la cabecera del panel. */
-.brand-kicker {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 850;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.live-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 6px rgba(237, 20, 112, 0.12);
-}
-
-/* El icono escala con el titular para que la pareja se lea como una unidad. */
-.brand {
-  display: flex;
-  align-items: center;
-  gap: clamp(12px, 2vw, 22px);
-  margin: 14px 0 10px;
-}
-
-.brand-logo {
-  width: clamp(2.2rem, 5vw, 3.4rem);
-  height: auto;
-  flex: 0 0 auto;
-}
-
-.top h1 {
-  margin: 0;
-  font-size: clamp(2.1rem, 5.5vw, 3.6rem);
-  font-weight: 800;
-  line-height: 0.9;
-  letter-spacing: -0.065em;
-}
-
-.layout {
-  max-width: 1180px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
-  gap: 24px;
-  align-items: start;
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 22px;
-  box-shadow: var(--shadow);
 }
 
 h2 {
@@ -319,22 +100,10 @@ input[type="color"] {
   cursor: pointer;
 }
 
-.field {
-  margin-bottom: 16px;
-}
-
 label {
   display: block;
   margin-bottom: 6px;
   font-size: 14px;
-}
-
-.muted {
-  color: var(--muted);
-}
-
-.small {
-  font-size: 12px;
 }
 
 textarea,
@@ -774,17 +543,6 @@ input[type="range"]:disabled {
   }
 }
 
-.output {
-  max-width: 1180px;
-  margin: 24px auto 0;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 22px;
-  text-align: center;
-  box-shadow: var(--shadow);
-}
-
 .output #download {
   max-width: 320px;
 }
@@ -821,13 +579,6 @@ input[type="range"]:disabled {
   }
 }
 
-@keyframes mini-in {
-  from {
-    opacity: 0;
-    transform: translateY(-12px);
-  }
-}
-
 .mini-canvas {
   display: block;
   width: 100%;
@@ -835,30 +586,6 @@ input[type="range"]:disabled {
   border-radius: 7px;
   background: var(--ink);
   cursor: pointer;
-}
-
-.mini-close {
-  position: absolute;
-  top: -9px;
-  left: -9px;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: inherit;
-  font-size: 17px;
-  line-height: 1;
-  color: var(--text);
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.mini-close:hover {
-  border-color: var(--accent);
 }
 
 @media (max-width: 900px) {
@@ -901,6 +628,7 @@ input[type="range"]:disabled {
     max-height: 60vh;
   }
 }
+
 /* La revision del texto va antes de la imagen, junto a la cabecera del bloque. */
 .review {
   max-width: 620px;
@@ -911,60 +639,4 @@ input[type="range"]:disabled {
   border-radius: var(--radius);
   text-align: left;
   font-size: 13px;
-}
-
-.review p {
-  margin: 0;
-}
-
-/* El enlace obligatorio a LanguageTool, arriba a la derecha del cuadro. */
-.review-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.review-head p {
-  font-weight: 600;
-}
-
-.review .lt {
-  flex: none;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.review ul {
-  margin: 8px 0 0;
-  padding-left: 18px;
-}
-
-.review li {
-  margin-bottom: 4px;
-}
-
-.review q {
-  color: var(--error);
-}
-
-.review-fix {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-#review-proposal {
-  color: var(--text);
-}
-
-#fix {
-  flex: none;
-  padding: 6px 12px;
-  font-size: 12px;
-  letter-spacing: 0.06em;
 }
