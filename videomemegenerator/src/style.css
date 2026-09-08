@@ -1,0 +1,970 @@
+/*
+ * SF Pro Display Bold, que es la que lleva la capa TEXTO del PSD. El .otf
+ * original pesa 5,1 MB porque trae 30.853 glifos; aqui va reducido a Latin y
+ * en woff2, 51 KB, sin perder acentos, eñes, ¿¡, comillas angulares ni el
+ * simbolo del euro.
+ */
+@font-face {
+  font-family: "SF Pro Display";
+  src: url("./assets/sf-pro-display-bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
+ * La paleta del panel Pulso Viral (noticias-virales): fondo rosa muy claro,
+ * papel blanco, el rosa #ed1470 de acento y sombras rosadas en vez de negras.
+ * Los nombres son los de siempre, asi que el resto de la hoja no se entera.
+ */
+:root {
+  --bg: #fff7fb;
+  --panel: #ffffff;
+  --panel-2: #fff0f7;
+  --line: #efd5e2;
+  --text: #28151f;
+  --muted: #806b76;
+  --accent: #ed1470;
+  --accent-hover: #c8105e;
+  --accent-soft: rgba(237, 20, 112, 0.09);
+  --error: #c72d55;
+  /*
+   * La cama de los lienzos sigue siendo oscura: la foto y el video se juzgan
+   * sobre negro de estudio, no sobre rosa.
+   */
+  --ink: #0e1015;
+  --shadow: 0 8px 24px rgba(117, 35, 73, 0.06);
+  /* El alto de la barra de herramientas, que las previas pegajosas
+     tienen que descontar para no meterse debajo. */
+  --nav-h: 54px;
+  --radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/*
+ * Los degradados van en una capa fija, como en el panel. Puestos sobre el body
+ * sus centros en porcentaje se calculan sobre el alto del documento, asi que en
+ * una pagina larga se irian fuera de la vista y el fondo se veria plano.
+ */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 85% -10%, rgba(237, 20, 112, 0.15), transparent 33rem),
+    radial-gradient(circle at -10% 20%, rgba(255, 190, 218, 0.25), transparent 28rem);
+}
+
+body {
+  margin: 0;
+  padding: 0 24px 64px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/*
+ * El menu de las tres herramientas. Va pegado arriba y a sangre: el body tiene
+ * su margen lateral, asi que la barra lo descuenta para llegar a los bordes.
+ */
+.tools {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin: 0 -24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 6px 18px rgba(117, 35, 73, 0.05);
+  overflow-x: auto;
+  /*
+   * La barra de desplazamiento sobra: con tres enlaces solo hace falta rodar
+   * en lo estrecho, y ahi se arrastra con el dedo.
+   */
+  scrollbar-width: none;
+}
+
+.tools::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * `max-content` con margenes automaticos: centrado mientras quepa, y pegado al
+ * principio en cuanto no quepa. Con `justify-content: center` a secas, lo que
+ * se sale por la izquierda no hay forma de alcanzarlo.
+ */
+.tools-inner {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  min-width: max-content;
+  margin: 0 auto;
+  padding: 8px 24px;
+}
+
+.tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tool svg {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.55;
+}
+
+.tool:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tool:hover svg,
+.tool.is-current svg {
+  opacity: 1;
+}
+
+.tool:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* La herramienta abierta, en la pastilla rosa. */
+.tool.is-current {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(237, 20, 112, 0.24);
+}
+
+.tool-name-short {
+  display: none;
+}
+
+/*
+ * Los tres nombres enteros piden 480 px y un movil da 390: por debajo de 560
+ * se queda la primera palabra de cada uno. El nombre completo sigue estando en
+ * el `aria-label` del enlace.
+ */
+@media (max-width: 560px) {
+  .tool-name {
+    display: none;
+  }
+
+  .tool-name-short {
+    display: inline;
+  }
+}
+
+.top {
+  max-width: 1180px;
+  margin: 0 auto 26px;
+  padding: 38px 0 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* El rotulo con el punto rosa, la firma de la cabecera del panel. */
+.brand-kicker {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 6px rgba(237, 20, 112, 0.12);
+}
+
+/* El icono escala con el titular para que la pareja se lea como una unidad. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 22px);
+  margin: 14px 0 10px;
+}
+
+.brand-logo {
+  width: clamp(2.2rem, 5vw, 3.4rem);
+  height: auto;
+  flex: 0 0 auto;
+}
+
+.top h1 {
+  margin: 0;
+  font-size: clamp(2.1rem, 5.5vw, 3.6rem);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.065em;
+}
+
+.layout {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+h2:not(:first-child) {
+  margin-top: 26px;
+}
+
+/* La seccion de colores va plegada: casi siempre son los mismos. */
+.section {
+  margin-top: 26px;
+}
+
+.section > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  list-style: none;
+}
+
+.section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.section > summary::after {
+  content: " +";
+}
+
+.section[open] > summary::after {
+  content: " –";
+}
+
+.section > summary:hover {
+  color: var(--text);
+}
+
+.section[open] > summary {
+  margin-bottom: 12px;
+}
+
+.colors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+input[type="color"] {
+  width: 100%;
+  height: 38px;
+  padding: 2px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12px;
+}
+
+textarea,
+input[type="text"],
+input[type="range"] {
+  width: 100%;
+}
+
+textarea,
+input[type="text"] {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+textarea:focus,
+input[type="text"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* La explicacion de un apartado. Va antes de sus campos, o cerrandolos. */
+.hint {
+  margin: 0 0 14px;
+}
+
+.hint:last-child {
+  margin-bottom: 0;
+}
+
+input[type="range"] {
+  accent-color: var(--accent);
+}
+
+input[type="range"]:disabled {
+  opacity: 0.4;
+}
+
+/*
+ * Las dos barras de debajo de la previa —reproducir y recortar— tienen que ser
+ * la misma barra. Van en una sola rejilla de tres columnas: icono, pista y
+ * etiqueta. Compartiendo rejilla, la columna de las etiquetas la fija la mas
+ * larga de las dos, asi que las pistas empiezan y acaban exactamente igual sin
+ * tener que cuadrar anchos a mano.
+ */
+.bars {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 6px;
+  margin: 12px 0 6px;
+}
+
+/* `contents` para que el envoltorio no rompa la rejilla del padre. */
+.trim {
+  display: contents;
+}
+
+.trim[hidden] {
+  display: none;
+}
+
+/*
+ * El `range` nativo se repinta entero para que su pulgar mida exactamente lo
+ * mismo que los tiradores del recorte, 12 px. Es lo unico que hace que las dos
+ * pistas recorran el mismo camino: el pulgar se mueve entre 6 px y ancho-6, y
+ * los tiradores tambien.
+ *
+ * Al quitarle la apariencia nativa se pierde el relleno de `accent-color`, asi
+ * que se repone con un degradado duro gobernado por `--fill`, que actualiza el
+ * propio codigo al mover la barra.
+ */
+#seek {
+  --fill: 0%;
+
+  appearance: none;
+  -webkit-appearance: none;
+  height: 22px;
+  /* Chrome le pone 2 px por lado a los `range`, y eso descuadraba las pistas. */
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+
+#seek::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0 var(--fill),
+    var(--line) var(--fill) 100%
+  );
+}
+
+#seek::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0 var(--fill),
+    var(--line) var(--fill) 100%
+  );
+}
+
+#seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 22px;
+  /* Centra el tirador sobre una pista de 4 px: (22 - 4) / 2. */
+  margin-top: -9px;
+  border-radius: 4px;
+  background: var(--text);
+  border: 1px solid var(--bg);
+}
+
+#seek::-moz-range-thumb {
+  width: 12px;
+  height: 22px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  background: var(--text);
+  border: 1px solid var(--bg);
+}
+
+/*
+ * El video se suelta en cualquier parte de la ventana, no en una caja: la caja
+ * ocupaba sitio para no hacer nada mas que ser una diana. Esto es solo el aviso
+ * de que se puede soltar, y solo sale mientras se arrastra algo por encima.
+ */
+.drop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 247, 251, 0.92);
+  border: 3px dashed var(--accent);
+  border-radius: var(--radius);
+  pointer-events: none;
+}
+
+/*
+ * Sin esto el aviso no se esconde nunca: el `display: flex` de arriba le gana
+ * al `display: none` que el navegador le pone al atributo `hidden`, porque una
+ * regla de hoja de estilos manda sobre la del agente de usuario.
+ */
+.drop[hidden] {
+  display: none;
+}
+
+.drop p {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.wide {
+  width: 100%;
+}
+
+.btn,
+.btn-secondary {
+  font: inherit;
+  font-weight: 900;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 13px 18px;
+  background: var(--accent);
+  color: #fff;
+  letter-spacing: 0.07em;
+  box-shadow: 0 8px 20px rgba(237, 20, 112, 0.22);
+}
+
+.btn:hover {
+  background: var(--accent-hover);
+}
+
+.btn:disabled {
+  background: var(--panel-2);
+  color: var(--muted);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* Los botones de apoyo son las pastillas de los filtros del panel. */
+.btn-secondary {
+  padding: 8px 14px;
+  font-weight: 750;
+  border-radius: 999px;
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/*
+ * La barra de progreso. Codificar en el navegador tarda, asi que sin esto
+ * parece que la pagina se ha colgado.
+ */
+.progress {
+  margin-top: 12px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.progress > div {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
+
+.status {
+  margin: 10px 0 0;
+  min-height: 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.status.error {
+  color: var(--error);
+}
+
+/*
+ * El play de la reproduccion y las tijeras del recorte. Van los dos al mismo
+ * tono y al mismo ancho, que es lo que deja las dos pistas alineadas.
+ */
+.icon-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-btn:hover:not(:disabled):not(.is-static) {
+  color: var(--text);
+}
+
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Las tijeras solo rotulan la barra: no son un boton. */
+.icon-btn.is-static {
+  cursor: default;
+}
+
+.icon-btn .i-pause,
+.icon-btn[aria-pressed="true"] .i-play {
+  display: none;
+}
+
+.icon-btn[aria-pressed="true"] .i-pause {
+  display: inline;
+}
+
+.icon-btn[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+/*
+ * El volteo va encima de la previa, abajo a la derecha: es lo que le pasa a la
+ * imagen, asi que se toca mirandola y no desde el panel de al lado.
+ */
+.stage-btn {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text);
+  background: rgba(14, 16, 21, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(4px);
+}
+
+.stage-btn svg {
+  width: 21px;
+  height: 21px;
+}
+
+.stage-btn:hover:not(:disabled) {
+  background: rgba(14, 16, 21, 0.82);
+  border-color: var(--accent);
+}
+
+.stage-btn[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.stage-btn:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/*
+ * El recorte va debajo de la barra de reproduccion y con su misma pista: los
+ * dos extremos marcan lo que se exporta, y la barra de arriba se queda
+ * encerrada entre ellos.
+ */
+.trim-track {
+  position: relative;
+  height: 22px;
+  touch-action: none;
+  cursor: pointer;
+}
+
+/* Los mismos 4 px de grosor y los mismos 9 px de centrado que el `range`. */
+.trim-track::before {
+  content: "";
+  position: absolute;
+  inset: 9px 0;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.trim-span {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.trim-handle {
+  position: absolute;
+  top: 0;
+  width: 12px;
+  height: 22px;
+  margin-left: -6px;
+  border-radius: 4px;
+  background: var(--text);
+  border: 1px solid var(--bg);
+  cursor: ew-resize;
+}
+
+/* Las dos etiquetas, al mismo sitio y sin bailar al cambiar los numeros. */
+.bars > span {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.trim-handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.stage {
+  position: relative;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+#preview,
+#result {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  background: var(--ink);
+}
+
+#preview {
+  max-height: 74vh;
+  width: auto;
+  touch-action: none;
+}
+
+#result {
+  max-height: 70vh;
+}
+
+/*
+ * En escritorio la previa acompaña al scroll. Los controles que hay mas abajo
+ * -los colores sobre todo- se tocan mirando el resultado, y sin esto habia que
+ * elegir entre ver el selector o ver lo que le pasa al rotulo.
+ *
+ * El alto del lienzo se recorta a lo que deja el panel entero, porque una
+ * previa que no cabe en la ventana no se pega a nada: se queda a medias y el
+ * scroll la arrastra igual.
+ */
+@media (min-width: 901px) {
+  #preview-panel {
+    position: sticky;
+    top: calc(var(--nav-h) + 16px);
+  }
+
+  #preview {
+    max-height: calc(100vh - var(--nav-h) - 220px);
+  }
+}
+
+.output {
+  max-width: 1180px;
+  margin: 24px auto 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.output #download {
+  max-width: 320px;
+}
+
+/*
+ * Vista previa flotante. Solo en pantallas estrechas, que es donde la previa
+ * de verdad queda muy por debajo del formulario: mientras se escribe o se
+ * toca un color, la miniatura ensena en que va quedando.
+ *
+ * Va arriba a la derecha, colgada de la barra de herramientas, y no abajo: el
+ * filo de abajo es donde descansa el pulgar, y por ahi entran GENERA y la
+ * descarga, asi que tapaba justo lo que se iba a pulsar.
+ */
+.mini {
+  position: fixed;
+  top: calc(var(--nav-h) + 16px);
+  right: 12px;
+  /* Por encima del contenido y por debajo del velo de soltar el archivo. */
+  z-index: 35;
+  width: 96px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 14px 34px rgba(117, 35, 73, 0.18);
+  /* Oculta por defecto: la media query de abajo es la que la deja salir. */
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .mini.is-visible {
+    display: block;
+    animation: mini-in 0.18s ease-out;
+  }
+}
+
+@keyframes mini-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+.mini-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 7px;
+  background: var(--ink);
+  cursor: pointer;
+}
+
+.mini-close {
+  position: absolute;
+  top: -9px;
+  left: -9px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.mini-close:hover {
+  border-color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  /*
+   * La barra encoge con los enlaces mas juntos, y lo que cuelga de ella
+   * tiene que enterarse.
+   */
+  :root {
+    --nav-h: 48px;
+  }
+
+  body {
+    padding: 0 14px 48px;
+  }
+
+  .top {
+    padding-top: 28px;
+  }
+
+  .tools {
+    margin: 0 -14px;
+  }
+
+  .tools-inner {
+    gap: 4px;
+    padding: 7px 14px;
+  }
+
+  .tool {
+    gap: 6px;
+    padding: 8px 11px;
+    font-size: 12px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #preview {
+    max-height: 60vh;
+  }
+}
+/* La revision del texto va antes de la imagen, junto a la cabecera del bloque. */
+.review {
+  max-width: 620px;
+  margin: 0 auto 20px;
+  padding: 12px 16px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  text-align: left;
+  font-size: 13px;
+}
+
+.review p {
+  margin: 0;
+}
+
+/* El enlace obligatorio a LanguageTool, arriba a la derecha del cuadro. */
+.review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.review-head p {
+  font-weight: 600;
+}
+
+.review .lt {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.review li {
+  margin-bottom: 4px;
+}
+
+.review q {
+  color: var(--error);
+}
+
+.review-fix {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+#review-proposal {
+  color: var(--text);
+}
+
+#fix {
+  flex: none;
+  padding: 6px 12px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}

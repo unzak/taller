@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Cuadro azul con las esquinas redondeadas -->
+  <rect x="36" y="36" width="440" height="440" rx="84" fill="#003392"/>
+
+  <!--
+    Play blanco. Va entre el centro de su caja (270) y su centroide (243),
+    porque un triangulo apuntando a la derecha centrado por la caja se ve
+    cargado a la derecha, y centrado por el centroide, a la izquierda.
+  -->
+  <path d="M190 166 L190 346 L350 256 Z" fill="#FFFFFF"/>
+</svg>
