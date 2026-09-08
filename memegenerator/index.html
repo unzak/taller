@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meme Generator · Cabronazi</title>
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#ed1470" />
+    <link rel="icon" type="image/svg+xml" href="/src/assets/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Inter es la letra de la interfaz, la misma que declara el panel Pulso
+      Viral. Va en variable para que los pesos intermedios (750, 850) salgan
+      exactos y no redondeados al peso estatico mas cercano.
+    -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!--
+      El menu de las tres herramientas. Los enlaces apuntan a GitHub Pages, que
+      es donde vive cada una; en local solo responde en localhost la que se
+      esta sirviendo, las otras dos saltan a la publicada.
+    -->
+    <nav class="tools" aria-label="Herramientas">
+      <div class="tools-inner">
+        <a
+          class="tool"
+          href="https://unzak.github.io/news-maker/"
+          aria-label="News Maker"
+        >
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+            <rect x="4" y="3" width="16" height="18" rx="2.5" />
+            <path d="M8 8h8M8 12h8M8 16h5" />
+          </svg>
+          <span class="tool-name">News Maker</span>
+          <span class="tool-name-short" aria-hidden="true">News</span>
+        </a>
+        <a
+          class="tool is-current"
+          href="https://unzak.github.io/memegenerator/"
+          aria-label="Meme Generator"
+          aria-current="page"
+        >
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+            <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+            <circle cx="8.6" cy="10" r="1.5" />
+            <path d="m4.5 17.5 4.4-4.4a1.8 1.8 0 0 1 2.6 0l5 5" />
+          </svg>
+          <span class="tool-name">Meme Generator</span>
+          <span class="tool-name-short" aria-hidden="true">Meme</span>
+        </a>
+        <a
+          class="tool"
+          href="https://unzak.github.io/videomemegenerator/"
+          aria-label="Video Meme Generator"
+        >
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2.5" />
+            <path d="M3 9h18" />
+            <path d="m7.6 4 2.4 5M13.1 4l2.4 5" />
+          </svg>
+          <span class="tool-name">Video Meme Generator</span>
+          <span class="tool-name-short" aria-hidden="true">Video</span>
+        </a>
+      </div>
+    </nav>
+
+    <header class="top">
+      <div class="brand-kicker"><span class="live-dot"></span> Taller Cabronazi</div>
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="/src/assets/favicon.svg"
+          alt=""
+          width="96"
+          height="96"
+          decoding="async"
+        />
+        <h1>Meme Generator</h1>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <h2>1 · Texto</h2>
+        <div class="field">
+          <label for="text">
+            Rótulo
+            <span class="muted small">· lo que envuelvas en *asteriscos* sale resaltado</span>
+          </label>
+          <textarea id="text" rows="4" placeholder="Escribe aquí el texto del meme"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="size">
+            Tamaño de letra
+            <span class="muted small">· <span id="size-value">52</span> px · la banda se adapta</span>
+          </label>
+          <input type="range" id="size" min="26" max="84" step="1" value="52" />
+        </div>
+
+        <div class="field">
+          <label for="align">Alineación</label>
+          <select id="align">
+            <option value="center" selected>Centrado</option>
+            <option value="left">A la izquierda</option>
+          </select>
+        </div>
+
+        <h2>2 · Imagen</h2>
+        <div class="field">
+          <input type="file" id="file" accept="image/*" hidden />
+          <button type="button" id="pick" class="btn-secondary">Elegir archivo…</button>
+          <p class="muted small" id="file-name">Ningún archivo seleccionado</p>
+        </div>
+
+        <div class="field">
+          <input type="range" id="zoom" min="1" max="3" step="0.01" value="1" />
+        </div>
+
+        <details class="section">
+          <summary>3 · Colores</summary>
+          <div class="colors">
+            <div class="field">
+              <label for="color-band">Banda</label>
+              <input type="color" id="color-band" value="#ffffff" />
+              <div class="swatches" data-for="color-band"></div>
+            </div>
+            <div class="field">
+              <label for="color-text">Texto</label>
+              <input type="color" id="color-text" value="#000000" />
+              <div class="swatches" data-for="color-text"></div>
+            </div>
+            <div class="field">
+              <label for="color-highlight">Resaltado</label>
+              <input type="color" id="color-highlight" value="#e11d2f" />
+              <div class="swatches" data-for="color-highlight"></div>
+            </div>
+          </div>
+        </details>
+
+        <button type="button" id="generate" class="btn">GENERA</button>
+        <p class="status" id="status"></p>
+      </section>
+
+      <section class="panel" id="preview-panel">
+        <h2>Vista previa</h2>
+        <div class="stage" id="stage">
+          <canvas id="preview"></canvas>
+          <div class="hint" id="hint">
+            <p><strong>Suelta aquí la foto</strong></p>
+            <p class="muted small">o pulsa para elegirla · también vale Ctrl+V</p>
+          </div>
+        </div>
+        <p class="muted small" id="preview-info"></p>
+      </section>
+    </main>
+
+    <section class="output" id="output" hidden>
+      <h2>Resultado</h2>
+
+      <div class="review" id="review" hidden>
+        <div class="review-head">
+          <p id="review-title"></p>
+          <a class="lt" href="https://languagetool.org" target="_blank" rel="noopener"
+            >LanguageTool</a
+          >
+        </div>
+        <ul id="review-list" hidden></ul>
+        <div class="review-fix" id="review-fix" hidden>
+          <p id="review-proposal"></p>
+          <button type="button" id="fix" class="btn-secondary">CORREGIR</button>
+        </div>
+      </div>
+
+      <canvas id="result"></canvas>
+      <p class="muted small" id="result-info"></p>
+      <button type="button" id="download" class="btn">Descargar PNG</button>
+    </section>
+
+    <!-- Vista previa flotante. Solo aparece en pantallas estrechas. -->
+    <div id="mini" class="mini" aria-hidden="true">
+      <button
+        type="button"
+        id="mini-close"
+        class="mini-close"
+        aria-label="Cerrar la vista previa flotante"
+      >
+        ×
+      </button>
+      <canvas
+        id="mini-canvas"
+        class="mini-canvas"
+        width="240"
+        height="300"
+        role="img"
+        aria-label="Vista previa reducida. Tócala para ir a la vista previa completa."
+      ></canvas>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

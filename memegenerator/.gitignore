@@ -1,0 +1,21 @@
+# Dependencias
+node_modules/
+
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Build / salida
+dist/
+build/
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Salidas de prueba
+_out.png
+_test-*.png
