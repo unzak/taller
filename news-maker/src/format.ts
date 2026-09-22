@@ -133,6 +133,13 @@ export const RULE_Y = 914;
 export const RULE_H = 25;
 
 /**
+ * Grosor del nucleo blanco de los filetes, medido sobre rule-core.png: la
+ * tinta ocupa tres filas (11..13) de las 25 de la banda. Es el grosor que
+ * copia la linea que separa las dos fotos, para que sea la misma raya.
+ */
+export const RULE_CORE_H = 3;
+
+/**
  * Colores preestablecidos de los selectores. Blanco y amarillo son los del
  * titular en el PSD; los cinco restantes son el color dominante de cada logo,
  * medido sobre los PNG originales a 1080 px.

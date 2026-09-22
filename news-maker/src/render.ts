@@ -2,6 +2,7 @@ import {
   BASELINE_CENTER,
   CANVAS_H,
   CANVAS_W,
+  COLOR_BASE,
   COLOR_BG,
   FONT_FAMILY,
   FONT_SIZE,
@@ -15,6 +16,7 @@ import {
   LINE_RATIO,
   OVERLAY_Y,
   PHOTO_H,
+  RULE_CORE_H,
   RULE_H,
   RULE_Y,
   TEXT_MAX_W,
@@ -355,6 +357,16 @@ export function render(ctx: CanvasRenderingContext2D, opts: RenderOptions): void
   if (opts.inset) drawInset(ctx, opts.inset, opts.colorRing);
 
   ctx.drawImage(opts.overlay, 0, OVERLAY_Y, CANVAS_W, CANVAS_H - OVERLAY_Y);
+
+  // La junta entre las dos fotos: la misma raya blanca de los filetes, puesta
+  // de pie. Va despues del degradado para que no se la coma por abajo, y se
+  // para al llegar al logo, que es donde la recogen los filetes.
+  if (opts.photos.length > 1) {
+    ctx.fillStyle = COLOR_BASE;
+    // Redondeado a pixel entero: a medio pixel la raya sale lavada por los
+    // bordes y deja de ser la misma tinta maciza que los filetes.
+    ctx.fillRect(Math.round((CANVAS_W - RULE_CORE_H) / 2), 0, RULE_CORE_H, LOGO_Y);
+  }
 
   drawRules(ctx, opts.ruleGlow, opts.ruleCore, opts.ruleColor);
 
