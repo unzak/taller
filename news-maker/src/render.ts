@@ -36,6 +36,19 @@ export interface PhotoTransform {
   offsetY: number;
 }
 
+/** Una foto del fondo, con su imagen, su tamaño y su encuadre propio. */
+export interface Photo {
+  image: CanvasImageSource;
+  size: { width: number; height: number };
+  transform: PhotoTransform;
+}
+
+/** Hueco del lienzo que ocupa la foto `i` de `n`. Con dos, media y media. */
+export function photoColumn(i: number, n: number): { x: number; w: number } {
+  const w = CANVAS_W / Math.max(1, n);
+  return { x: i * w, w };
+}
+
 /** Mosca circular: segunda imagen recortada en circulo, con aro de color. */
 export interface Inset {
   image: CanvasImageSource;
@@ -51,9 +64,8 @@ export interface Inset {
 }
 
 export interface RenderOptions {
-  photo: CanvasImageSource | null;
-  photoSize: { width: number; height: number } | null;
-  transform: PhotoTransform;
+  /** Una foto ocupa todo el ancho; dos se reparten mitad y mitad. */
+  photos: Photo[];
   overlay: CanvasImageSource;
   /** Mascaras de los filetes: halo teñible y nucleo blanco fijo. */
   ruleGlow: CanvasImageSource;
@@ -201,30 +213,27 @@ function fitText(
  * esto, arrastrando lo suficiente se destapa un borde y vuelve a verse el
  * corte, ademas de aparecer negro por los lados.
  */
-export function clampPhotoOffset(
-  photoSize: { width: number; height: number },
-  transform: PhotoTransform,
-): void {
+export function clampPhotoOffset(photo: Photo, col: { x: number; w: number }): void {
   const scale =
-    Math.max(CANVAS_W / photoSize.width, PHOTO_H / photoSize.height) * transform.zoom;
-  const maxX = Math.max(0, (photoSize.width * scale - CANVAS_W) / 2);
-  const maxY = Math.max(0, (photoSize.height * scale - PHOTO_H) / 2);
-  transform.offsetX = Math.min(maxX, Math.max(-maxX, transform.offsetX));
-  transform.offsetY = Math.min(maxY, Math.max(-maxY, transform.offsetY));
+    Math.max(col.w / photo.size.width, PHOTO_H / photo.size.height) * photo.transform.zoom;
+  const maxX = Math.max(0, (photo.size.width * scale - col.w) / 2);
+  const maxY = Math.max(0, (photo.size.height * scale - PHOTO_H) / 2);
+  photo.transform.offsetX = Math.min(maxX, Math.max(-maxX, photo.transform.offsetX));
+  photo.transform.offsetY = Math.min(maxY, Math.max(-maxY, photo.transform.offsetY));
 }
 
-/** Encaje "cover" de la foto en el area de foto, mas zoom y desplazamiento. */
+/** Encaje "cover" de la foto en su hueco, mas zoom y desplazamiento. */
 export function photoRect(
-  photoSize: { width: number; height: number },
-  transform: PhotoTransform,
+  photo: Photo,
+  col: { x: number; w: number },
 ): { x: number; y: number; w: number; h: number } {
   const scale =
-    Math.max(CANVAS_W / photoSize.width, PHOTO_H / photoSize.height) * transform.zoom;
-  const w = photoSize.width * scale;
-  const h = photoSize.height * scale;
+    Math.max(col.w / photo.size.width, PHOTO_H / photo.size.height) * photo.transform.zoom;
+  const w = photo.size.width * scale;
+  const h = photo.size.height * scale;
   return {
-    x: (CANVAS_W - w) / 2 + transform.offsetX,
-    y: (PHOTO_H - h) / 2 + transform.offsetY,
+    x: col.x + (col.w - w) / 2 + photo.transform.offsetX,
+    y: (PHOTO_H - h) / 2 + photo.transform.offsetY,
     w,
     h,
   };
@@ -328,17 +337,20 @@ export function render(ctx: CanvasRenderingContext2D, opts: RenderOptions): void
   ctx.fillStyle = COLOR_BG;
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  if (opts.photo && opts.photoSize) {
-    const r = photoRect(opts.photoSize, opts.transform);
+  // Cada foto se pinta dentro de su hueco y recortada a el, para que al
+  // reencuadrar una no se meta en el terreno de la otra.
+  opts.photos.forEach((photo, i) => {
+    const col = photoColumn(i, opts.photos.length);
+    const r = photoRect(photo, col);
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, 0, CANVAS_W, PHOTO_H);
+    ctx.rect(col.x, 0, col.w, PHOTO_H);
     ctx.clip();
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(opts.photo, r.x, r.y, r.w, r.h);
+    ctx.drawImage(photo.image, r.x, r.y, r.w, r.h);
     ctx.restore();
-  }
+  });
 
   if (opts.inset) drawInset(ctx, opts.inset, opts.colorRing);
 

@@ -76,6 +76,29 @@
           <input type="range" id="zoom" min="1" max="3" step="0.01" value="1" />
         </div>
 
+        <!--
+          La segunda imagen: la noticia pasa a llevar dos, mitad y mitad, y
+          cada una se encuadra por su cuenta igual que cuando va sola.
+        -->
+        <div class="field">
+          <input type="file" id="file2" accept="image/*" hidden />
+          <button type="button" id="add-photo" class="btn-secondary">
+            Añadir nueva imagen
+          </button>
+          <p class="muted small" id="file2-name" hidden>Sin segunda imagen</p>
+        </div>
+
+        <div class="field" id="photo2-controls" hidden>
+          <label for="zoom2">
+            Encuadre de la segunda imagen
+            <span class="muted small">· arrastra sobre su mitad de la vista previa</span>
+          </label>
+          <input type="range" id="zoom2" min="1" max="3" step="0.01" value="1" />
+          <button type="button" id="photo2-remove" class="btn-secondary">
+            Quitar la segunda imagen
+          </button>
+        </div>
+
         <h2>3 · Mosca <span class="muted small">· opcional</span></h2>
         <div id="drop-inset" class="drop drop-sm">
           <input type="file" id="file-inset" accept="image/*" hidden />

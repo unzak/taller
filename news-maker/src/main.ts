@@ -28,9 +28,10 @@ import {
   clampInsetOffset,
   clampPhotoOffset,
   hitsInset,
+  photoColumn,
   render,
   type Inset,
-  type PhotoTransform,
+  type Photo,
 } from "./render.js";
 import { nav } from "../../comun/nav.js";
 import { applyFixes, check, type Issue } from "../../comun/spell.js";
@@ -51,6 +52,12 @@ const fileEl = need<HTMLInputElement>("file");
 const pickEl = need<HTMLButtonElement>("pick");
 const fileNameEl = need<HTMLParagraphElement>("file-name");
 const zoomEl = need<HTMLInputElement>("zoom");
+const file2El = need<HTMLInputElement>("file2");
+const addPhotoEl = need<HTMLButtonElement>("add-photo");
+const file2NameEl = need<HTMLParagraphElement>("file2-name");
+const photo2ControlsEl = need<HTMLDivElement>("photo2-controls");
+const zoom2El = need<HTMLInputElement>("zoom2");
+const photo2RemoveEl = need<HTMLButtonElement>("photo2-remove");
 const textEl = need<HTMLTextAreaElement>("text");
 const baseEl = need<HTMLInputElement>("color-base");
 const highEl = need<HTMLInputElement>("color-highlight");
@@ -88,12 +95,14 @@ const resultCtx = resultEl.getContext("2d", { willReadFrequently: false });
 const miniCtx = miniCanvasEl.getContext("2d");
 if (!previewCtx || !resultCtx || !miniCtx) throw new Error("Este navegador no soporta canvas 2D");
 
-let photo: HTMLImageElement | null = null;
-let photoSize: { width: number; height: number } | null = null;
+/**
+ * Las fotos del fondo, en el orden en que se ven: una ocupa el ancho entero y
+ * dos se reparten el lienzo mitad y mitad, cada una con su propio encuadre.
+ */
+const photos: Photo[] = [];
 let overlay: HTMLImageElement | null = null;
 let ruleGlow: HTMLImageElement | null = null;
 let ruleCore: HTMLImageElement | null = null;
-const transform: PhotoTransform = { zoom: 1, offsetX: 0, offsetY: 0 };
 let inset: Inset | null = null;
 
 /**
@@ -139,12 +148,10 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 function draw(): void {
   if (!overlay || !ruleGlow || !ruleCore) return;
   // Centralizado aqui: asi ningun gesto puede dejar un encuadre invalido.
-  if (photoSize) clampPhotoOffset(photoSize, transform);
+  photos.forEach((ph, i) => clampPhotoOffset(ph, photoColumn(i, photos.length)));
   if (inset) clampInsetOffset(inset);
   render(previewCtx!, {
-    photo,
-    photoSize,
-    transform,
+    photos,
     overlay,
     ruleGlow,
     ruleCore,
@@ -187,7 +194,7 @@ function previewIsNear(): boolean {
 
 function updateMini(): void {
   // Solo tiene sentido cuando ya hay algo que mirar.
-  const show = !miniDismissed && photo !== null && !previewIsNear();
+  const show = !miniDismissed && photos.length > 0 && !previewIsNear();
   miniEl.classList.toggle("is-visible", show);
   miniEl.setAttribute("aria-hidden", show ? "false" : "true");
 }
@@ -213,7 +220,19 @@ function setStatus(msg: string, kind: "info" | "error" = "info"): void {
 
 /* ---------- carga de la foto ---------- */
 
-async function useFile(file: File): Promise<void> {
+/** Deja la interfaz acorde a si hay o no segunda imagen. */
+function setPhoto2UI(visible: boolean): void {
+  photo2ControlsEl.hidden = !visible;
+  file2NameEl.hidden = !visible;
+  addPhotoEl.hidden = visible;
+}
+
+/**
+ * Carga un archivo en la ranura dada: 0 es la foto de siempre y 1 la segunda.
+ * Al cambiar el numero de fotos cambia el ancho del hueco, asi que el encuadre
+ * de la que ya estaba vuelve al punto de partida en vez de quedarse torcido.
+ */
+async function useFile(file: File, slot: 0 | 1): Promise<void> {
   if (!file.type.startsWith("image/")) {
     setStatus("Ese archivo no es una imagen.", "error");
     return;
@@ -221,16 +240,25 @@ async function useFile(file: File): Promise<void> {
   const url = URL.createObjectURL(file);
   try {
     const img = await loadImage(url);
-    photo = img;
-    photoSize = { width: img.naturalWidth, height: img.naturalHeight };
-    transform.zoom = 1;
-    transform.offsetX = 0;
-    transform.offsetY = 0;
-    zoomEl.value = "1";
-    fileNameEl.textContent = `${file.name} · ${img.naturalWidth}×${img.naturalHeight}`;
-    if (img.naturalWidth < CANVAS_W) {
+    const antes = photos.length;
+    photos[slot] = {
+      image: img,
+      size: { width: img.naturalWidth, height: img.naturalHeight },
+      transform: { zoom: 1, offsetX: 0, offsetY: 0 },
+    };
+    const nameEl = slot === 0 ? fileNameEl : file2NameEl;
+    nameEl.textContent = `${file.name} · ${img.naturalWidth}×${img.naturalHeight}`;
+    if (slot === 1) setPhoto2UI(true);
+    if (photos.length !== antes) {
+      // Con la segunda foto el reparto cambia: todos los encuadres a cero.
+      for (const ph of photos) ph.transform = { zoom: 1, offsetX: 0, offsetY: 0 };
+    }
+    zoomEl.value = String(photos[0]?.transform.zoom ?? 1);
+    zoom2El.value = String(photos[1]?.transform.zoom ?? 1);
+    const minimo = CANVAS_W / photos.length;
+    if (img.naturalWidth < minimo) {
       setStatus(
-        `Aviso: la foto tiene ${img.naturalWidth} px de ancho y el formato pide ${CANVAS_W}. Se verá pixelada.`,
+        `Aviso: la foto tiene ${img.naturalWidth} px de ancho y su hueco pide ${Math.round(minimo)}. Se verá pixelada.`,
         "error",
       );
     } else {
@@ -245,7 +273,26 @@ async function useFile(file: File): Promise<void> {
 pickEl.addEventListener("click", () => fileEl.click());
 fileEl.addEventListener("change", () => {
   const file = fileEl.files?.[0];
-  if (file) void useFile(file);
+  if (file) void useFile(file, 0);
+});
+
+addPhotoEl.addEventListener("click", () => file2El.click());
+file2El.addEventListener("change", () => {
+  const file = file2El.files?.[0];
+  if (file) void useFile(file, 1);
+});
+
+photo2RemoveEl.addEventListener("click", () => {
+  photos.length = Math.min(photos.length, 1);
+  // Vuelve a mandar una sola foto en todo el ancho: su encuadre ya no vale.
+  const sola = photos[0];
+  if (sola) sola.transform = { zoom: 1, offsetX: 0, offsetY: 0 };
+  zoomEl.value = "1";
+  zoom2El.value = "1";
+  file2El.value = "";
+  file2NameEl.textContent = "Sin segunda imagen";
+  setPhoto2UI(false);
+  draw();
 });
 
 for (const evt of ["dragenter", "dragover"] as const) {
@@ -262,17 +309,32 @@ for (const evt of ["dragleave", "drop"] as const) {
 }
 dropEl.addEventListener("drop", (e) => {
   const file = e.dataTransfer?.files?.[0];
-  if (file) void useFile(file);
+  if (file) void useFile(file, 0);
 });
 
 /* ---------- reencuadre ---------- */
 
 zoomEl.addEventListener("input", () => {
-  transform.zoom = Number(zoomEl.value);
+  const ph = photos[0];
+  if (!ph) return;
+  ph.transform.zoom = Number(zoomEl.value);
   draw();
 });
 
-type Target = "photo" | "inset";
+zoom2El.addEventListener("input", () => {
+  const ph = photos[1];
+  if (!ph) return;
+  ph.transform.zoom = Number(zoom2El.value);
+  draw();
+});
+
+/** Que se manipula con el gesto: la mosca, o una de las fotos por su indice. */
+type Target = { kind: "inset" } | { kind: "photo"; index: number };
+
+/** El control de zoom que le toca a cada foto. */
+function zoomInput(index: number): HTMLInputElement {
+  return index === 0 ? zoomEl : zoom2El;
+}
 
 /** Punteros activos sobre la vista previa, en coordenadas de pantalla. */
 const pointers = new Map<number, { x: number; y: number }>();
@@ -301,8 +363,11 @@ function clamp(v: number, min: number, max: number): number {
 /** Que se manipula segun donde caiga un punto: la mosca o la foto de fondo. */
 function targetAt(clientX: number, clientY: number): Target | null {
   const p = toCanvas(clientX, clientY);
-  if (inset && hitsInset(inset, p.x, p.y)) return "inset";
-  return photo ? "photo" : null;
+  if (inset && hitsInset(inset, p.x, p.y)) return { kind: "inset" };
+  if (photos.length === 0) return null;
+  // Cada foto manda en su mitad: el punto dice cual se esta tocando.
+  const i = Math.floor((p.x / CANVAS_W) * photos.length);
+  return { kind: "photo", index: clamp(i, 0, photos.length - 1) };
 }
 
 /** Distancia y punto medio entre los dos primeros dedos. */
@@ -325,7 +390,7 @@ function startPinch(): void {
   if (!dragTarget) return;
   pinch = {
     dist: g.dist,
-    zoom: transform.zoom,
+    zoom: dragTarget.kind === "photo" ? (photos[dragTarget.index]?.transform.zoom ?? 1) : 1,
     radius: inset?.radius ?? INSET_DEFAULT_R,
     insetZoom: inset?.zoom ?? 1,
   };
@@ -375,7 +440,7 @@ previewEl.addEventListener("pointermove", (e) => {
     const g = pinchGeometry();
     if (!g || pinch.dist === 0) return;
     const ratio = g.dist / pinch.dist;
-    if (dragTarget === "inset" && inset) {
+    if (dragTarget.kind === "inset" && inset) {
       if (insetMode === "frame") {
         inset.zoom = clamp(pinch.insetZoom * ratio, ZOOM_MIN, ZOOM_MAX);
         insetZoomEl.value = String(inset.zoom);
@@ -384,9 +449,12 @@ previewEl.addEventListener("pointermove", (e) => {
         insetSizeEl.value = String(Math.round(inset.radius));
       }
       clampInsetOffset(inset);
-    } else {
-      transform.zoom = clamp(pinch.zoom * ratio, ZOOM_MIN, ZOOM_MAX);
-      zoomEl.value = String(transform.zoom);
+    } else if (dragTarget.kind === "photo") {
+      const ph = photos[dragTarget.index];
+      if (ph) {
+        ph.transform.zoom = clamp(pinch.zoom * ratio, ZOOM_MIN, ZOOM_MAX);
+        zoomInput(dragTarget.index).value = String(ph.transform.zoom);
+      }
     }
     // El punto medio tambien arrastra, que es lo que espera el dedo.
     move(dragTarget, (g.mx - lastX) * s, (g.my - lastY) * s);
@@ -423,7 +491,7 @@ previewEl.addEventListener(
     const delta = clamp(e.deltaY * unit, -WHEEL_MAX_DELTA, WHEEL_MAX_DELTA);
     // Exponencial, para que el paso se note igual en cualquier escala.
     const factor = Math.exp(-delta / WHEEL_DIVISOR);
-    if (target === "inset" && inset) {
+    if (target.kind === "inset" && inset) {
       if (insetMode === "frame") {
         inset.zoom = clamp(inset.zoom * factor, ZOOM_MIN, ZOOM_MAX);
         insetZoomEl.value = String(inset.zoom);
@@ -432,9 +500,12 @@ previewEl.addEventListener(
         insetSizeEl.value = String(Math.round(inset.radius));
       }
       clampInsetOffset(inset);
-    } else {
-      transform.zoom = clamp(transform.zoom * factor, ZOOM_MIN, ZOOM_MAX);
-      zoomEl.value = String(transform.zoom);
+    } else if (target.kind === "photo") {
+      const ph = photos[target.index];
+      if (ph) {
+        ph.transform.zoom = clamp(ph.transform.zoom * factor, ZOOM_MIN, ZOOM_MAX);
+        zoomInput(target.index).value = String(ph.transform.zoom);
+      }
     }
     draw();
   },
@@ -443,7 +514,14 @@ previewEl.addEventListener(
 );
 
 function move(target: Target, dx: number, dy: number): void {
-  if (target === "inset" && inset) {
+  if (target.kind === "photo") {
+    const ph = photos[target.index];
+    if (!ph) return;
+    ph.transform.offsetX += dx;
+    ph.transform.offsetY += dy;
+    return;
+  }
+  if (inset) {
     if (insetMode === "frame") {
       inset.offsetX += dx;
       inset.offsetY += dy;
@@ -453,9 +531,6 @@ function move(target: Target, dx: number, dy: number): void {
     // Dejar siempre un trozo dentro del lienzo para poder recuperarla.
     inset.cx = clamp(inset.cx + dx, 0, CANVAS_W);
     inset.cy = clamp(inset.cy + dy, 0, PHOTO_H);
-  } else {
-    transform.offsetX += dx;
-    transform.offsetY += dy;
   }
 }
 
@@ -632,7 +707,7 @@ function stamp(): string {
 
 function generate(): void {
   if (!overlay || !ruleGlow || !ruleCore) return;
-  if (!photo) {
+  if (photos.length === 0) {
     setStatus("Añade una imagen antes de generar.", "error");
     return;
   }
@@ -641,9 +716,7 @@ function generate(): void {
     return;
   }
   render(resultCtx!, {
-    photo,
-    photoSize,
-    transform,
+    photos,
     overlay,
     ruleGlow,
     ruleCore,
