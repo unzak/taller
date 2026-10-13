@@ -1,5 +1,7 @@
 import {
   ARROW,
+  DIVIDER_W,
+  INSET,
   CANVAS_H,
   CANVAS_W,
   MEDIA_MIN_H,
@@ -38,13 +40,40 @@ export interface TextSpec {
   size: number;
 }
 
-export interface RenderOptions {
-  kind: Kind;
+/** Una imagen o un video de la pieza, con su encuadre propio. */
+export interface MediaItem {
   /** La imagen, o el fotograma del video que se esta encuadrando. */
-  media: CanvasImageSource | null;
-  mediaSize: { width: number; height: number } | null;
+  source: CanvasImageSource;
+  size: { width: number; height: number };
   transform: MediaTransform;
   flip: boolean;
+  /**
+   * true en el video. En la capa que va a ffmpeg su hueco se deja
+   * transparente, que es por donde se ve el video de verdad.
+   */
+  video: boolean;
+}
+
+/** La mosca: un aro, con una imagen recortada en circulo dentro o sin ella. */
+export interface Inset {
+  source: CanvasImageSource | null;
+  size: { width: number; height: number } | null;
+  cx: number;
+  cy: number;
+  radius: number;
+  /** Zoom del contenido dentro del circulo. 1 = encaje "cover" justo. */
+  zoom: number;
+  /** Encuadre del contenido dentro del circulo, en px de lienzo. */
+  offsetX: number;
+  offsetY: number;
+}
+
+export interface RenderOptions {
+  kind: Kind;
+  /** Una ocupa toda la ventana; dos se la reparten mitad y mitad. */
+  items: MediaItem[];
+  /** La mosca, o null si no hay. Su aro va del color del resaltado. */
+  inset: Inset | null;
   /** El texto de abajo, que es el de siempre. Vacio es no ponerlo. */
   bottom: TextSpec;
   /** El de arriba, opcional. `null` es que no hay. */
@@ -331,8 +360,16 @@ export interface Layout {
   bandBottom: number;
   /** La ventana por la que se ve la imagen, entre las dos bandas. */
   area: Rect;
-  /** Donde se pinta la imagen o el video. null si no hay. */
-  media: Rect | null;
+  /** El hueco de cada imagen: la ventana entera, o media con dos. */
+  columns: Rect[];
+  /** Donde se pinta cada imagen o video, una por hueco. */
+  media: Rect[];
+}
+
+/** Hueco de la imagen `i` de `n` dentro de la ventana. Con dos, media y media. */
+function column(area: Rect, i: number, n: number): Rect {
+  const w = area.w / Math.max(1, n);
+  return { x: area.x + i * w, y: area.y, w, h: area.h };
 }
 
 function mediaScale(size: { width: number; height: number }, zoom: number, area: Rect): number {
@@ -401,22 +438,33 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
 
   const area: Rect = { x: 0, y: bandTop, w: CANVAS_W, h: bandBottom - bandTop };
 
-  // El rectangulo se redondea aqui, y no al dibujar, porque este mismo va a
-  // parar a ffmpeg: si la previa y la pieza redondean distinto, no cuadran.
-  let media: Rect | null = null;
-  if (opts.mediaSize) {
-    const scale = mediaScale(opts.mediaSize, opts.transform.zoom, area);
-    const w = Math.round(opts.mediaSize.width * scale);
-    const h = Math.round(opts.mediaSize.height * scale);
-    media = {
-      x: Math.round((CANVAS_W - w) / 2 + opts.transform.offsetX),
-      y: Math.round(area.y + (area.h - h) / 2 + opts.transform.offsetY),
+  // Los rectangulos se redondean aqui, y no al dibujar, porque el del video
+  // va a parar a ffmpeg: si la previa y la pieza redondean distinto, no cuadran.
+  const columns = opts.items.map((_, i) => column(area, i, opts.items.length));
+  const media = opts.items.map((item, i) => {
+    const col = columns[i]!;
+    const scale = mediaScale(item.size, item.transform.zoom, col);
+    const w = Math.round(item.size.width * scale);
+    const h = Math.round(item.size.height * scale);
+    return {
+      x: Math.round(col.x + (col.w - w) / 2 + item.transform.offsetX),
+      y: Math.round(col.y + (col.h - h) / 2 + item.transform.offsetY),
       w,
       h,
     };
-  }
+  });
 
-  return { width: CANVAS_W, height: CANVAS_H, top, bottom, bandTop, bandBottom, area, media };
+  return {
+    width: CANVAS_W,
+    height: CANVAS_H,
+    top,
+    bottom,
+    bandTop,
+    bandBottom,
+    area,
+    columns,
+    media,
+  };
 }
 
 /**
@@ -463,6 +511,122 @@ export function zoomMediaAt(
   transform.offsetY = anchor.y - sy * after - (cy - (size.height * after) / 2);
 }
 
+/**
+ * Pinta las imagenes, cada una recortada a su hueco para que al reencuadrar
+ * una no se meta en el terreno de la otra. Con `plate` se salta el video y
+ * pone negro bajo las fijas, por si alguna trae transparencia.
+ */
+function drawItems(
+  ctx: CanvasRenderingContext2D,
+  opts: RenderOptions,
+  layout: Layout,
+  plate: boolean,
+): void {
+  opts.items.forEach((item, i) => {
+    if (plate && item.video) return;
+    const col = layout.columns[i];
+    const r = layout.media[i];
+    if (!col || !r) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(col.x, col.y, col.w, col.h);
+    ctx.clip();
+    if (plate) {
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(col.x, col.y, col.w, col.h);
+    }
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    if (item.flip) {
+      // Se espeja dentro de su rectangulo, no respecto al lienzo: el encuadre
+      // se queda donde estaba. En ffmpeg es un `hflip` despues de escalar.
+      ctx.translate(r.x + r.w, r.y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(item.source, 0, 0, r.w, r.h);
+    } else {
+      ctx.drawImage(item.source, r.x, r.y, r.w, r.h);
+    }
+    ctx.restore();
+  });
+}
+
+/** Grosor del aro para un radio dado. Se usa tambien al detectar el clic. */
+export function ringWidth(radius: number): number {
+  return Math.max(INSET.ringMin, radius * INSET.ringRatio);
+}
+
+/**
+ * True si el punto cae sobre la mosca. Con imagen se coge por todo el disco;
+ * sin ella solo por el aro, porque lo de dentro es la foto y tiene que
+ * seguir pudiendose encuadrar.
+ */
+export function hitsInset(inset: Inset, x: number, y: number): boolean {
+  const d = Math.hypot(x - inset.cx, y - inset.cy);
+  const ring = ringWidth(inset.radius);
+  if (inset.source) return d <= inset.radius + ring;
+  return Math.abs(d - (inset.radius + ring / 2)) <= ring / 2 + INSET.grab;
+}
+
+/** Escala con la que el contenido cubre el circulo, zoom incluido. */
+function insetScale(inset: Inset): number {
+  if (!inset.size) return 1;
+  const d = inset.radius * 2;
+  return Math.max(d / inset.size.width, d / inset.size.height) * inset.zoom;
+}
+
+/** Recorta el encuadre para que la imagen siga tapando todo el circulo. */
+export function clampInsetOffset(inset: Inset): void {
+  if (!inset.size) return;
+  const d = inset.radius * 2;
+  const s = insetScale(inset);
+  const maxX = Math.max(0, (inset.size.width * s - d) / 2);
+  const maxY = Math.max(0, (inset.size.height * s - d) / 2);
+  inset.offsetX = Math.min(maxX, Math.max(-maxX, inset.offsetX));
+  inset.offsetY = Math.min(maxY, Math.max(-maxY, inset.offsetY));
+}
+
+function drawInset(
+  ctx: CanvasRenderingContext2D,
+  inset: Inset,
+  area: Rect,
+  color: string,
+): void {
+  const ring = ringWidth(inset.radius);
+  ctx.save();
+  // Recortada a la ventana: la mosca no debe pisar las bandas del texto.
+  ctx.beginPath();
+  ctx.rect(area.x, area.y, area.w, area.h);
+  ctx.clip();
+
+  if (inset.source && inset.size) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(inset.cx, inset.cy, inset.radius, 0, Math.PI * 2);
+    ctx.clip();
+    const scale = insetScale(inset);
+    const w = inset.size.width * scale;
+    const h = inset.size.height * scale;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(
+      inset.source,
+      inset.cx - w / 2 + inset.offsetX,
+      inset.cy - h / 2 + inset.offsetY,
+      w,
+      h,
+    );
+    ctx.restore();
+  }
+
+  // El aro va por fuera del circulo: con imagen no la recorta.
+  ctx.beginPath();
+  ctx.arc(inset.cx, inset.cy, inset.radius + ring / 2, 0, Math.PI * 2);
+  ctx.lineWidth = ring;
+  ctx.strokeStyle = color;
+  ctx.stroke();
+  ctx.restore();
+}
+
 function prepare(ctx: CanvasRenderingContext2D, layout: Layout): void {
   const { canvas } = ctx;
   if (canvas.width !== layout.width || canvas.height !== layout.height) {
@@ -484,21 +648,8 @@ export function render(ctx: CanvasRenderingContext2D, opts: RenderOptions): Layo
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, layout.width, layout.height);
 
-  if (opts.media && layout.media) {
-    const { x, y, w, h } = layout.media;
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    if (opts.flip) {
-      // Se espeja dentro de su rectangulo, no respecto al lienzo: el encuadre
-      // se queda donde estaba. En ffmpeg es un `hflip` despues de escalar.
-      ctx.save();
-      ctx.translate(x + w, y);
-      ctx.scale(-1, 1);
-      ctx.drawImage(opts.media, 0, 0, w, h);
-      ctx.restore();
-    } else {
-      ctx.drawImage(opts.media, x, y, w, h);
-    }
+  if (opts.items.length > 0) {
+    drawItems(ctx, opts, layout, false);
   } else if (opts.placeholder) {
     const { area } = layout;
     ctx.fillStyle = "#23252d";
@@ -516,7 +667,7 @@ export function render(ctx: CanvasRenderingContext2D, opts: RenderOptions): Layo
     ctx.textBaseline = "alphabetic";
   }
 
-  drawPlate(ctx, opts, layout);
+  drawPlate(ctx, opts, layout, false);
   return layout;
 }
 
@@ -527,7 +678,7 @@ export function render(ctx: CanvasRenderingContext2D, opts: RenderOptions): Layo
 export function renderPlate(ctx: CanvasRenderingContext2D, opts: RenderOptions): Layout {
   const layout = computeLayout(ctx, opts);
   prepare(ctx, layout);
-  drawPlate(ctx, opts, layout);
+  drawPlate(ctx, opts, layout, true);
   return layout;
 }
 
@@ -551,8 +702,27 @@ function fade(ctx: CanvasRenderingContext2D, from: number, to: number): void {
  * la de arriba con el de arriba. Sin texto no hay ni negro ni difuminado, y la
  * imagen llega hasta el filo.
  */
-function drawPlate(ctx: CanvasRenderingContext2D, opts: RenderOptions, layout: Layout): void {
+function drawPlate(
+  ctx: CanvasRenderingContext2D,
+  opts: RenderOptions,
+  layout: Layout,
+  withImages: boolean,
+): void {
   const style = STYLES[opts.kind];
+
+  // En la capa de ffmpeg las imagenes fijas van aqui: debajo solo corre el
+  // video, y lo que este se salga de su mitad lo tapa la imagen de al lado.
+  if (withImages) drawItems(ctx, opts, layout, true);
+
+  // La junta entre las dos imagenes. Va antes de las bandas para que el
+  // difuminado se la coma por los extremos en vez de cortarla en seco.
+  if (opts.items.length > 1) {
+    const { area } = layout;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(Math.round((layout.width - DIVIDER_W) / 2), area.y, DIVIDER_W, area.h);
+  }
+
+  if (opts.inset) drawInset(ctx, opts.inset, layout.area, opts.colorHighlight);
 
   if (layout.top) {
     ctx.fillStyle = "#000000";

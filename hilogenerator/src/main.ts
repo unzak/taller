@@ -10,6 +10,7 @@ import {
   BIG_SCALE,
   BIG_SCALE_MAX,
   BIG_SCALE_MIN,
+  INSET,
   MARGIN_MAX,
   MARGIN_MIN,
   MARGIN_SIDE,
@@ -21,12 +22,15 @@ import {
   type Kind,
 } from "./format.js";
 import {
+  clampInsetOffset,
   clampMediaOffset,
   computeLayout,
+  hitsInset,
   render,
   renderPlate,
   resetMetrics,
   zoomMediaAt,
+  type Inset,
   type MediaTransform,
   type RenderOptions,
 } from "./render.js";
@@ -71,9 +75,24 @@ const bandPadValueEl = need<HTMLSpanElement>("band-pad-value");
 const dropEl = need<HTMLDivElement>("drop");
 const fileEl = need<HTMLInputElement>("file");
 const pickEl = need<HTMLButtonElement>("pick");
-const clearEl = need<HTMLButtonElement>("clear");
-const fileNameEl = need<HTMLParagraphElement>("file-name");
+const file2El = need<HTMLInputElement>("file2");
+const addPhotoEl = need<HTMLButtonElement>("add-photo");
+const fileListEl = need<HTMLDivElement>("file-list");
 const zoomEl = need<HTMLInputElement>("zoom");
+const zoomWhichEl = need<HTMLSpanElement>("zoom-which");
+const insetSectionEl = need<HTMLDetailsElement>("inset-section");
+const insetFileEl = need<HTMLInputElement>("inset-file");
+const insetPickEl = need<HTMLButtonElement>("inset-pick");
+const insetClearEl = need<HTMLButtonElement>("inset-clear");
+const insetNameEl = need<HTMLParagraphElement>("inset-name");
+const insetSizeEl = need<HTMLInputElement>("inset-size");
+const insetSizeValueEl = need<HTMLSpanElement>("inset-size-value");
+const insetImageEl = need<HTMLDivElement>("inset-image");
+const insetZoomEl = need<HTMLInputElement>("inset-zoom");
+const insetModeEls = {
+  move: need<HTMLButtonElement>("inset-move"),
+  frame: need<HTMLButtonElement>("inset-frame"),
+};
 const zoomValueEl = need<HTMLSpanElement>("zoom-value");
 const textColorEl = need<HTMLInputElement>("color-text");
 const highlightEl = need<HTMLInputElement>("color-highlight");
@@ -127,6 +146,13 @@ type Media =
   | { kind: "image"; el: HTMLImageElement; file: File; url: string; size: { width: number; height: number } }
   | { kind: "video"; el: HTMLVideoElement; file: File; url: string; size: { width: number; height: number } };
 
+/** Una imagen o un video de la pieza, con su encuadre y su volteo. */
+interface Item {
+  media: Media;
+  transform: MediaTransform;
+  flip: boolean;
+}
+
 /**
  * Una pieza del hilo. Todo lo que la define vive aqui y no en los controles:
  * los controles enseñan la pieza abierta, y al generar hay que poder pintar
@@ -146,9 +172,12 @@ interface Slide {
   bandPad: number;
   /** Lo que crece lo +destacado+. Lo *resaltado* solo cambia de color. */
   bigScale: number;
-  media: Media | null;
-  transform: MediaTransform;
-  flip: boolean;
+  /** Ninguna, una, o dos que se reparten la ventana. Como mucho un video. */
+  items: Item[];
+  /** A cual de las dos le hablan el zoom y el volteo: la ultima tocada. */
+  active: number;
+  /** La mosca. Existe siempre; sale cuando su apartado esta abierto. */
+  inset: Inset & { on: boolean; media: Media | null };
   /** Tramo del video que se exporta. Arranca abarcandolo entero. */
   trim: { start: number; end: number };
   /** Su miniatura en la tira: una copia de la ultima previa. */
@@ -171,9 +200,20 @@ function newSlide(kind: Kind): Slide {
     marginSide: MARGIN_SIDE,
     bandPad: STYLES[kind].bandPad,
     bigScale: BIG_SCALE,
-    media: null,
-    transform: { zoom: 1, offsetX: 0, offsetY: 0 },
-    flip: false,
+    items: [],
+    active: 0,
+    inset: {
+      on: false,
+      media: null,
+      source: null,
+      size: null,
+      cx: INSET.cx,
+      cy: INSET.cy,
+      radius: INSET.radius,
+      zoom: 1,
+      offsetX: 0,
+      offsetY: 0,
+    },
     trim: { start: 0, end: 0 },
     thumb,
   };
@@ -188,19 +228,35 @@ function cur(): Slide {
   return slides[current]!;
 }
 
+/** La imagen a la que le hablan el zoom y el volteo, o null si no hay. */
+function item(s: Slide = cur()): Item | null {
+  return s.items[s.active] ?? s.items[0] ?? null;
+}
+
+/** El video de una pieza y el hueco que ocupa. Como mucho hay uno. */
+function videoOf(s: Slide): { index: number; el: HTMLVideoElement; file: File } | null {
+  for (const [index, it] of s.items.entries()) {
+    if (it.media.kind === "video") return { index, el: it.media.el, file: it.media.file };
+  }
+  return null;
+}
+
 /** El <video> de la pieza abierta, o null si no lleva video. */
 function video(): HTMLVideoElement | null {
-  const m = cur().media;
-  return m?.kind === "video" ? m.el : null;
+  return videoOf(cur())?.el ?? null;
 }
 
 function options(s: Slide, placeholder: boolean): RenderOptions {
   return {
     kind: s.kind,
-    media: s.media?.el ?? null,
-    mediaSize: s.media?.size ?? null,
-    transform: s.transform,
-    flip: s.flip,
+    items: s.items.map((it) => ({
+      source: it.media.el,
+      size: it.media.size,
+      transform: it.transform,
+      flip: it.flip,
+      video: it.media.kind === "video",
+    })),
+    inset: s.inset.on ? s.inset : null,
     bottom: { text: s.text, size: s.size },
     top: s.topOn ? { text: s.topText, size: s.topSize } : null,
     marginBottom: s.marginBottom,
@@ -292,7 +348,7 @@ removeEl.addEventListener("click", () => {
   if (slides.length === 1) return;
   pausePreview();
   const [gone] = slides.splice(current, 1);
-  if (gone) dropMedia(gone);
+  if (gone) dropSlide(gone);
   select(Math.min(current, slides.length - 1));
 });
 
@@ -317,19 +373,10 @@ function showSlide(): void {
   topTextEl.value = s.topText;
   topSectionEl.open = s.topOn;
 
-  const m = s.media;
-  clearEl.hidden = !m;
-  if (m) {
-    const mb = (m.file.size / (1024 * 1024)).toFixed(1);
-    const secs = m.kind === "video" ? ` · ${m.el.duration.toFixed(1)} s` : "";
-    fileNameEl.textContent = `${m.file.name} · ${m.size.width} × ${m.size.height}${secs} · ${mb} MB`;
-  } else {
-    fileNameEl.textContent = "Ningún archivo seleccionado";
-  }
-
-  flipEl.disabled = !m;
-  flipEl.setAttribute("aria-pressed", String(s.flip));
-  barsEl.hidden = m?.kind !== "video";
+  showFiles();
+  showActive();
+  showInset();
+  barsEl.hidden = !video();
   showTrim();
   showPlay();
   showTime();
@@ -433,12 +480,18 @@ function once(el: HTMLVideoElement, type: string): Promise<void> {
 async function openImage(file: File): Promise<Media> {
   const url = URL.createObjectURL(file);
   const el = new Image();
-  el.src = url;
+  // Con `load` y no con `decode()`: en una pestaña que no se esta viendo el
+  // navegador aplaza la descodificacion y `decode()` no vuelve hasta que se
+  // mira, asi que pegar una imagen y cambiar de pestaña la dejaba colgada.
   try {
-    await el.decode();
-  } catch {
+    await new Promise<void>((resolve, reject) => {
+      el.onload = () => resolve();
+      el.onerror = () => reject(new Error("No se pudo abrir la imagen."));
+      el.src = url;
+    });
+  } catch (err) {
     URL.revokeObjectURL(url);
-    throw new Error("No se pudo abrir la imagen.");
+    throw err;
   }
   return { kind: "image", el, file, url, size: { width: el.naturalWidth, height: el.naturalHeight } };
 }
@@ -482,21 +535,102 @@ async function openVideo(file: File): Promise<Media> {
   return { kind: "video", el, file, url, size: { width: el.videoWidth, height: el.videoHeight } };
 }
 
-function dropMedia(s: Slide): void {
-  const m = s.media;
-  if (!m) return;
+function release(m: Media): void {
   if (m.kind === "video") {
     m.el.pause();
     m.el.remove();
   }
   URL.revokeObjectURL(m.url);
-  s.media = null;
 }
 
-async function loadFile(file: File, s: Slide): Promise<void> {
+/** Suelta todo lo que una pieza tiene cargado, para cuando se elimina. */
+function dropSlide(s: Slide): void {
+  for (const it of s.items) release(it.media);
+  s.items = [];
+  if (s.inset.media) release(s.inset.media);
+}
+
+/**
+ * Al cambiar cuantas imagenes hay cambian los huecos, y un encuadre pensado
+ * para la ventana entera no vale para media: vuelven todas al centro.
+ */
+function resetFraming(s: Slide): void {
+  for (const it of s.items) it.transform = { zoom: 1, offsetX: 0, offsetY: 0 };
+}
+
+function removeItem(s: Slide, index: number): void {
+  const [gone] = s.items.splice(index, 1);
+  if (!gone) return;
+  release(gone.media);
+  if (gone.media.kind === "video") s.trim = { start: 0, end: 0 };
+  s.active = 0;
+  resetFraming(s);
+}
+
+/** Los archivos de la pieza abierta, cada uno con su boton de quitar. */
+function showFiles(): void {
+  const s = cur();
+  const rows = s.items.map((it, i) => {
+    const m = it.media;
+    const row = document.createElement("p");
+    row.className = "file-row muted small";
+    const mb = (m.file.size / (1024 * 1024)).toFixed(1);
+    const secs = m.kind === "video" ? ` · ${m.el.duration.toFixed(1)} s` : "";
+    const side = s.items.length > 1 ? (i === 0 ? "Izquierda: " : "Derecha: ") : "";
+    const name = document.createElement("span");
+    name.textContent =
+      `${side}${m.file.name} · ${m.size.width} × ${m.size.height}${secs} · ${mb} MB`;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn-secondary";
+    btn.textContent = "Quitar";
+    btn.addEventListener("click", () => {
+      pausePreview();
+      removeItem(s, i);
+      showSlide();
+      draw();
+    });
+    row.append(name, btn);
+    return row;
+  });
+  if (rows.length === 0) {
+    const none = document.createElement("p");
+    none.className = "muted small";
+    none.textContent = "Ningún archivo seleccionado";
+    rows.push(none);
+  }
+  fileListEl.replaceChildren(...rows);
+
+  // La segunda solo tiene sentido cuando ya hay una primera.
+  addPhotoEl.hidden = s.items.length === 0;
+  addPhotoEl.textContent = s.items.length > 1 ? "Cambiar la segunda imagen…" : "Añadir nueva imagen";
+}
+
+/** A cual de las dos mitades le hablan el zoom y el volteo. */
+function showActive(): void {
+  const s = cur();
+  const it = item(s);
+  flipEl.disabled = !it;
+  flipEl.setAttribute("aria-pressed", String(it?.flip ?? false));
+  zoomWhichEl.textContent =
+    s.items.length > 1 ? (s.active === 0 ? "de la izquierda" : "de la derecha") : "";
+}
+
+/**
+ * `slot` es el hueco que se rellena: 0 la primera imagen, 1 la segunda. Pedir
+ * la segunda sin tener la primera es poner la primera.
+ */
+async function loadFile(file: File, s: Slide, slot = 0): Promise<void> {
   const isVideo = file.type.startsWith("video/");
   if (!isVideo && !file.type.startsWith("image/")) {
     setStatus("Ese archivo no es ni una imagen ni un vídeo.", "error");
+    return;
+  }
+
+  // ffmpeg monta un video con una capa encima: dos videos no caben en eso.
+  const taken = videoOf(s);
+  if (isVideo && taken && taken.index !== Math.min(slot, s.items.length)) {
+    setStatus("En una pieza solo cabe un vídeo: la otra mitad tiene que ser una imagen.", "error");
     return;
   }
 
@@ -509,17 +643,24 @@ async function loadFile(file: File, s: Slide): Promise<void> {
   }
 
   if (s === cur()) pausePreview();
-  dropMedia(s);
-  s.media = media;
-  s.transform = { zoom: 1, offsetX: 0, offsetY: 0 };
-  s.flip = false;
-  s.trim = { start: 0, end: media.kind === "video" ? media.el.duration || 0 : 0 };
+  const index = Math.min(slot, s.items.length);
+  const before = s.items.length;
+  const old = s.items[index];
+  if (old) {
+    release(old.media);
+    if (old.media.kind === "video") s.trim = { start: 0, end: 0 };
+  }
+  s.items[index] = { media, transform: { zoom: 1, offsetX: 0, offsetY: 0 }, flip: false };
+  s.active = index;
+  if (s.items.length !== before) resetFraming(s);
+  if (media.kind === "video") s.trim = { start: 0, end: media.el.duration || 0 };
 
-  // Por debajo de 1080 de ancho la imagen se amplia, y ampliar es lo unico de
-  // toda la pieza que se nota de verdad.
-  if (media.size.width < CANVAS_W) {
+  // Por debajo del ancho de su hueco la imagen se amplia, y ampliar es lo
+  // unico de toda la pieza que se nota de verdad.
+  const wanted = CANVAS_W / s.items.length;
+  if (media.size.width < wanted) {
     setStatus(
-      `Aviso: tiene ${media.size.width} px de ancho y el lienzo pide ${CANVAS_W}. Se verá pixelado.`,
+      `Aviso: tiene ${media.size.width} px de ancho y su hueco pide ${wanted}. Se verá pixelado.`,
       "error",
     );
   } else {
@@ -559,11 +700,13 @@ fileEl.addEventListener("change", () => {
   void loadFiles(files);
 });
 
-clearEl.addEventListener("click", () => {
-  pausePreview();
-  dropMedia(cur());
-  showSlide();
-  draw();
+// La segunda imagen: la pieza pasa a llevar dos, mitad y mitad, y cada una se
+// encuadra por su cuenta igual que cuando va sola.
+addPhotoEl.addEventListener("click", () => file2El.click());
+file2El.addEventListener("change", () => {
+  const file = file2El.files?.[0];
+  file2El.value = "";
+  if (file) void loadFile(file, cur(), 1);
 });
 
 /**
@@ -606,12 +749,113 @@ window.addEventListener("paste", (e) => {
 });
 
 flipEl.addEventListener("click", () => {
-  const s = cur();
-  if (!s.media) return;
-  s.flip = !s.flip;
-  flipEl.setAttribute("aria-pressed", String(s.flip));
+  const it = item();
+  if (!it) return;
+  it.flip = !it.flip;
+  flipEl.setAttribute("aria-pressed", String(it.flip));
   draw();
 });
+
+// --- Mosca ------------------------------------------------------------------
+
+/**
+ * Que hace un gesto sobre la mosca cuando lleva imagen: moverla y cambiarle el
+ * tamaño, o encuadrar y ampliar lo que tiene dentro. Sin imagen no hay nada
+ * que encuadrar y siempre se mueve.
+ */
+let insetMode: "move" | "frame" = "move";
+
+function showInset(): void {
+  const { inset } = cur();
+  insetSectionEl.open = inset.on;
+  insetClearEl.hidden = !inset.media;
+  insetPickEl.textContent = inset.media ? "Cambiar la imagen…" : "Poner una imagen dentro…";
+  insetNameEl.textContent = inset.media
+    ? `${inset.media.file.name} · ${inset.media.size.width} × ${inset.media.size.height}`
+    : "Sin imagen: solo el aro, para señalar algo de la foto.";
+  insetImageEl.hidden = !inset.media;
+  if (!inset.media) insetMode = "move";
+  for (const mode of ["move", "frame"] as const) {
+    insetModeEls[mode].setAttribute("aria-checked", String(insetMode === mode));
+  }
+}
+
+function setInsetMedia(s: Slide, media: Media | null): void {
+  const { inset } = s;
+  if (inset.media) release(inset.media);
+  inset.media = media;
+  inset.source = media?.el ?? null;
+  inset.size = media?.size ?? null;
+  inset.zoom = 1;
+  inset.offsetX = 0;
+  inset.offsetY = 0;
+}
+
+insetSectionEl.addEventListener("toggle", () => {
+  cur().inset.on = insetSectionEl.open;
+  draw();
+});
+
+insetPickEl.addEventListener("click", () => insetFileEl.click());
+insetFileEl.addEventListener("change", () => {
+  const file = insetFileEl.files?.[0];
+  insetFileEl.value = "";
+  if (!file) return;
+  const s = cur();
+  void openImage(file).then(
+    (media) => {
+      setInsetMedia(s, media);
+      if (s === cur()) {
+        showInset();
+        draw();
+      } else {
+        paintThumb(s);
+      }
+    },
+    () => setStatus("No se pudo abrir la imagen de la mosca.", "error"),
+  );
+});
+
+insetClearEl.addEventListener("click", () => {
+  setInsetMedia(cur(), null);
+  showInset();
+  draw();
+});
+
+insetSizeEl.addEventListener("input", () => {
+  cur().inset.radius = Number(insetSizeEl.value);
+  draw();
+});
+insetZoomEl.addEventListener("input", () => {
+  cur().inset.zoom = Number(insetZoomEl.value);
+  draw();
+});
+
+for (const mode of ["move", "frame"] as const) {
+  insetModeEls[mode].addEventListener("click", () => {
+    insetMode = mode;
+    showInset();
+  });
+}
+
+/** Mueve la mosca, o lo que lleva dentro, segun el modo. */
+function dragInset(dx: number, dy: number): void {
+  const { inset } = cur();
+  if (insetMode === "frame") {
+    inset.offsetX += dx;
+    inset.offsetY += dy;
+    return;
+  }
+  inset.cx = clamp(inset.cx + dx, 0, CANVAS_W);
+  inset.cy = clamp(inset.cy + dy, 0, CANVAS_H);
+}
+
+/** Cambia el tamaño de la mosca, o el zoom de lo que lleva dentro. */
+function scaleInset(radius: number, zoom: number): void {
+  const { inset } = cur();
+  if (insetMode === "frame") inset.zoom = clamp(zoom, ZOOM_MIN, ZOOM_MAX);
+  else inset.radius = clamp(radius, INSET.radiusMin, INSET.radiusMax);
+}
 
 // --- Reproducir la previa ---------------------------------------------------
 
@@ -716,8 +960,9 @@ function clockTenths(seconds: number): string {
  * duracion exacta no quita nada y solo puede desalinear el audio.
  */
 function trimRange(s: Slide): { start: number; end: number } | null {
-  if (s.media?.kind !== "video") return null;
-  const duration = s.media.el.duration || 0;
+  const clip = videoOf(s);
+  if (!clip) return null;
+  const duration = clip.el.duration || 0;
   const { start, end } = s.trim;
   if (duration <= 0) return null;
   if (start <= 0.001 && end >= duration - 0.001) return null;
@@ -840,13 +1085,19 @@ function toCanvas(clientX: number, clientY: number): { x: number; y: number } {
 }
 
 function clampOffset(s: Slide): void {
-  if (!s.media) return;
-  // La ventana depende del texto y de los margenes, nunca del encuadre, asi
-  // que se le puede preguntar a la composicion antes de recortar nada.
-  clampMediaOffset(s.media.size, s.transform, computeLayout(previewCtx, options(s, true)).area);
+  if (s.inset.on) clampInsetOffset(s.inset);
+  if (s.items.length === 0) return;
+  // Los huecos dependen del texto y de los margenes, nunca del encuadre, asi
+  // que se le pueden preguntar a la composicion antes de recortar nada.
+  const { columns } = computeLayout(previewCtx, options(s, true));
+  s.items.forEach((it, i) => {
+    const col = columns[i];
+    if (col) clampMediaOffset(it.media.size, it.transform, col);
+  });
 }
 
-type Target = "top" | "bottom" | "media";
+type TextTarget = "top" | "bottom";
+type Target = TextTarget | "media" | "inset";
 
 /**
  * Que hay bajo el puntero. Las bandas negras son territorio del texto y la
@@ -858,14 +1109,21 @@ function targetAt(clientX: number, clientY: number): Target | null {
   const layout = computeLayout(previewCtx, options(cur(), true));
   if (layout.top && p.y < layout.bandTop) return "top";
   if (layout.bottom && p.y >= layout.bandBottom) return "bottom";
-  return cur().media ? "media" : null;
+  const s = cur();
+  // La mosca va encima de la imagen, asi que se coge antes que ella.
+  if (s.inset.on && hitsInset(s.inset, p.x, p.y)) return "inset";
+  if (s.items.length === 0) return null;
+  // Con dos imagenes, el gesto es para la mitad sobre la que cae.
+  s.active = clamp(Math.floor((p.x / CANVAS_W) * s.items.length), 0, s.items.length - 1);
+  showActive();
+  return "media";
 }
 
-function sizeOf(target: Target): number {
+function sizeOf(target: TextTarget): number {
   return target === "top" ? cur().topSize : cur().size;
 }
 
-function setSize(target: Target, size: number): void {
+function setSize(target: TextTarget, size: number): void {
   const s = cur();
   const style = STYLES[s.kind];
   const next = Math.round(clamp(size, style.sizeMin, style.sizeMax) * 2) / 2;
@@ -878,7 +1136,7 @@ function setSize(target: Target, size: number): void {
  * Sube y baja un texto. `dy` viene en pixeles de lienzo y el margen tambien,
  * asi que el bloque sigue al puntero exactamente.
  */
-function moveText(target: Target, dy: number): void {
+function moveText(target: TextTarget, dy: number): void {
   const s = cur();
   if (target === "top") s.marginTop = clamp(s.marginTop + dy, MARGIN_MIN, MARGIN_MAX);
   else s.marginBottom = clamp(s.marginBottom - dy, MARGIN_MIN, MARGIN_MAX);
@@ -891,13 +1149,11 @@ function moveText(target: Target, dy: number): void {
  */
 function setZoom(zoom: number, anchor?: { x: number; y: number }): void {
   const s = cur();
-  const next = clamp(zoom, ZOOM_MIN, ZOOM_MAX);
-  if (s.media) {
-    const { area } = computeLayout(previewCtx, options(s, true));
-    const at = anchor ?? { x: area.x + area.w / 2, y: area.y + area.h / 2 };
-    zoomMediaAt(s.media.size, s.transform, next, area, at);
-  } else {
-    s.transform.zoom = next;
+  const it = item(s);
+  const col = computeLayout(previewCtx, options(s, true)).columns[s.active];
+  if (it && col) {
+    const at = anchor ?? { x: col.x + col.w / 2, y: col.y + col.h / 2 };
+    zoomMediaAt(it.media.size, it.transform, clamp(zoom, ZOOM_MIN, ZOOM_MAX), col, at);
   }
   draw();
 }
@@ -908,7 +1164,8 @@ const pointers = new Map<number, { x: number; y: number }>();
 let lastX = 0;
 let lastY = 0;
 let target: Target | null = null;
-let pinch: { dist: number; zoom: number; size: number } | null = null;
+let pinch: { dist: number; zoom: number; size: number; radius: number; insetZoom: number } | null =
+  null;
 
 function pinchGeometry(): { dist: number; mx: number; my: number } | null {
   const [a, b] = [...pointers.values()];
@@ -926,7 +1183,13 @@ previewEl.addEventListener("pointerdown", (e) => {
     // sobre la ventana hace zoom de la imagen.
     target = targetAt(g.mx, g.my);
     if (!target) return;
-    pinch = { dist: g.dist, zoom: cur().transform.zoom, size: sizeOf(target) };
+    pinch = {
+      dist: g.dist,
+      zoom: item()?.transform.zoom ?? 1,
+      size: target === "top" || target === "bottom" ? sizeOf(target) : 0,
+      radius: cur().inset.radius,
+      insetZoom: cur().inset.zoom,
+    };
     lastX = g.mx;
     lastY = g.my;
     return;
@@ -935,7 +1198,7 @@ previewEl.addEventListener("pointerdown", (e) => {
   target = targetAt(e.clientX, e.clientY);
   // Pulsar en la ventana vacia es pedir un archivo. Se apunta aqui y se abre
   // en el `click`, que es el gesto que los navegadores aceptan para eso.
-  pickOnClick = !target && !cur().media;
+  pickOnClick = !target && cur().items.length === 0;
   if (!target) return;
   lastX = e.clientX;
   lastY = e.clientY;
@@ -947,7 +1210,7 @@ previewEl.addEventListener("pointermove", (e) => {
   if (!target) return;
 
   const s = canvasScale();
-  const { transform } = cur();
+  const transform = item()?.transform ?? { zoom: 1, offsetX: 0, offsetY: 0 };
 
   if (pinch && pointers.size >= 2) {
     const g = pinchGeometry();
@@ -959,6 +1222,10 @@ previewEl.addEventListener("pointermove", (e) => {
       transform.offsetX += (g.mx - lastX) * s;
       transform.offsetY += (g.my - lastY) * s;
       setZoom(pinch.zoom * ratio, toCanvas(g.mx, g.my));
+    } else if (target === "inset") {
+      dragInset((g.mx - lastX) * s, (g.my - lastY) * s);
+      scaleInset(pinch.radius * ratio, pinch.insetZoom * ratio);
+      draw();
     } else {
       moveText(target, (g.my - lastY) * s);
       setSize(target, pinch.size * ratio);
@@ -971,6 +1238,8 @@ previewEl.addEventListener("pointermove", (e) => {
   if (target === "media") {
     transform.offsetX += (e.clientX - lastX) * s;
     transform.offsetY += (e.clientY - lastY) * s;
+  } else if (target === "inset") {
+    dragInset((e.clientX - lastX) * s, (e.clientY - lastY) * s);
   } else {
     // El texto solo sube y baja: a lo ancho lo coloca su alineacion.
     moveText(target, (e.clientY - lastY) * s);
@@ -1007,7 +1276,7 @@ for (const type of ["pointerup", "pointercancel"] as const) {
 let pickOnClick = false;
 
 previewEl.addEventListener("click", () => {
-  if (pickOnClick && !cur().media) fileEl.click();
+  if (pickOnClick && cur().items.length === 0) fileEl.click();
   pickOnClick = false;
 });
 
@@ -1027,8 +1296,14 @@ previewEl.addEventListener(
     const delta = clamp(e.deltaY * unit, -WHEEL_MAX_DELTA, WHEEL_MAX_DELTA);
     // Exponencial, para que el paso se note igual en cualquier escala.
     const factor = Math.exp(-delta / WHEEL_DIVISOR);
-    if (hit === "media") setZoom(cur().transform.zoom * factor, toCanvas(e.clientX, e.clientY));
-    else setSize(hit, sizeOf(hit) * factor);
+    if (hit === "media") {
+      setZoom((item()?.transform.zoom ?? 1) * factor, toCanvas(e.clientX, e.clientY));
+    } else if (hit === "inset") {
+      scaleInset(cur().inset.radius * factor, cur().inset.zoom * factor);
+      draw();
+    } else {
+      setSize(hit, sizeOf(hit) * factor);
+    }
   },
   { passive: false },
 );
@@ -1059,11 +1334,15 @@ function draw(): void {
   hlEl.value = String(s.bigScale);
   bandPadEl.value = String(s.bandPad);
   // La ventana vacia se pulsa; con imagen, se arrastra.
-  previewEl.style.cursor = s.media ? "grab" : "pointer";
+  previewEl.style.cursor = s.items.length > 0 ? "grab" : "pointer";
+  insetSizeEl.value = String(s.inset.radius);
+  insetZoomEl.value = String(s.inset.zoom);
+  insetSizeValueEl.textContent = String(Math.round(s.inset.radius * 2));
   marginBottomEl.value = String(s.marginBottom);
   marginTopEl.value = String(s.marginTop);
   marginSideEl.value = String(s.marginSide);
-  zoomEl.value = String(s.transform.zoom);
+  const zoom = item(s)?.transform.zoom ?? 1;
+  zoomEl.value = String(zoom);
 
   sizeValueEl.textContent = px(s.size);
   topSizeValueEl.textContent = px(s.topSize);
@@ -1072,7 +1351,7 @@ function draw(): void {
   marginBottomValueEl.textContent = String(Math.round(s.marginBottom));
   marginTopValueEl.textContent = String(Math.round(s.marginTop));
   marginSideValueEl.textContent = String(Math.round(s.marginSide));
-  zoomValueEl.textContent = String(Math.round(s.transform.zoom * 100));
+  zoomValueEl.textContent = String(Math.round(zoom * 100));
 
   const parts = [`${layout.width} × ${layout.height} px`];
   for (const [name, block] of [["arriba", layout.top], ["abajo", layout.bottom]] as const) {
@@ -1108,7 +1387,7 @@ function previewIsNear(): boolean {
 function updateMini(): void {
   // Solo tiene sentido cuando ya hay algo que mirar.
   const s = cur();
-  const something = s.media !== null || s.text.trim() !== "";
+  const something = s.items.length > 0 || s.text.trim() !== "";
   const show = !miniDismissed && something && !previewIsNear();
   if (show === miniShown) return;
   miniShown = show;
@@ -1163,16 +1442,18 @@ async function build(s: Slide, i: number): Promise<Result> {
   const number = String(i + 1).padStart(2, "0");
   const base = `hilo-${number}${s.kind === "portada" ? "-portada" : ""}`;
 
-  if (s.media?.kind === "video") {
+  const clip = videoOf(s);
+  if (clip) {
     const layout = renderPlate(ctx, opts);
-    if (!layout.media) throw new Error("Falta el vídeo.");
+    const rect = layout.media[clip.index];
+    if (!rect) throw new Error("Falta el vídeo.");
     const mp4 = await encode(
       {
-        source: s.media.file,
+        source: clip.file,
         plate: await toBlob(canvas),
-        rect: layout.media,
+        rect,
         canvas: { w: CANVAS_W, h: CANVAS_H },
-        flip: s.flip,
+        flip: s.items[clip.index]?.flip ?? false,
         trim: trimRange(s),
       },
       {
@@ -1266,7 +1547,7 @@ function generate(): void {
       const started = performance.now();
       const built: Result[] = [];
       for (const [i, s] of slides.entries()) {
-        progressEl.hidden = s.media?.kind !== "video";
+        progressEl.hidden = !videoOf(s);
         progressBarEl.style.width = "0";
         setStatus(`Pieza ${i + 1} de ${slides.length}…`);
         built.push(await build(s, i));
@@ -1432,6 +1713,10 @@ marginSideEl.min = String(MARGIN_MIN);
 marginSideEl.max = String(MARGIN_SIDE_MAX);
 zoomEl.min = String(ZOOM_MIN);
 zoomEl.max = String(ZOOM_MAX);
+insetSizeEl.min = String(INSET.radiusMin);
+insetSizeEl.max = String(INSET.radiusMax);
+insetZoomEl.min = String(ZOOM_MIN);
+insetZoomEl.max = String(ZOOM_MAX);
 
 showStrip();
 showSlide();

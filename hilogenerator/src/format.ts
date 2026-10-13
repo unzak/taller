@@ -140,6 +140,31 @@ export const ARROW = {
   color: "#d6336c",
 };
 
+/**
+ * La raya blanca que separa las dos imagenes cuando la pieza lleva dos. El
+ * mismo grosor que en News Maker, que es de donde viene la idea.
+ */
+export const DIVIDER_W = 3;
+
+/**
+ * La mosca: un aro del color del resaltado, con o sin imagen dentro. Sin
+ * imagen es el circulo que señala algo de la foto, como el de la portada de
+ * referencia; con imagen es la mosca de News Maker.
+ *
+ * El aro de la referencia mide ~9 px con ~185 de radio: un 5 %.
+ */
+export const INSET = {
+  cx: 700,
+  cy: 400,
+  radius: 180,
+  radiusMin: 50,
+  radiusMax: 460,
+  ringRatio: 0.05,
+  ringMin: 5,
+  /** Sin imagen se coge por el aro: esto es lo que el agarre sobresale de el. */
+  grab: 26,
+};
+
 /** Lo que nunca se estrecha la ventana de la imagen, crezca lo que crezca el texto. */
 export const MEDIA_MIN_H = 320;
 

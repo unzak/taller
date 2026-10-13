@@ -60,6 +60,25 @@ Pulsando la vista previa mientras está vacía, con el botón del panel, soltand
 el archivo en cualquier parte de la ventana o pegándolo del portapapeles
 (Ctrl+V). Varios archivos de una vez abren una slide por archivo.
 
+## Dos imágenes
+
+Como en News Maker: con una ya puesta, «Añadir nueva imagen» parte la ventana
+en dos, mitad y mitad, con una raya blanca en la junta. Cada una se encuadra por
+su cuenta, y el zoom y el volteo le hablan a la última que se haya tocado.
+
+Una de las dos puede ser un vídeo, pero **solo una**: ffmpeg monta un vídeo con
+una capa encima, y la imagen fija de la otra mitad viaja en esa capa.
+
+## Mosca
+
+Opcional, en su apartado: sale al abrirlo y se quita al plegarlo. Es un círculo
+con el aro **del color del resaltado**.
+
+- **Sin imagen** es solo el aro, para señalar algo de la foto. Se coge por el
+  aro; lo de dentro sigue siendo la foto y se encuadra como siempre.
+- **Con imagen** es la mosca de News Maker: la imagen recortada en círculo. Con
+  los dos botones se elige si el gesto mueve la mosca o encuadra lo de dentro.
+
 ## Lo que se mueve
 
 - **Márgenes**: inferior, superior y lateral, con su barra. El inferior y el

@@ -736,6 +736,33 @@ input[type="range"]:disabled {
   margin-bottom: 6px;
 }
 
+/* Los archivos de la pieza: el nombre, y a su lado el boton de quitarlo. */
+.file-list {
+  margin: 8px 0;
+}
+
+.file-list p {
+  margin: 0 0 6px;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-row span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.file-row .btn-secondary {
+  flex: none;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
 /* Las piezas ya hechas, cada una con su descarga. */
 .results {
   display: grid;

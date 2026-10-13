@@ -138,23 +138,74 @@
         <h2>4 · Imagen o vídeo</h2>
         <div class="field">
           <input type="file" id="file" accept="image/*,video/*" multiple hidden />
-          <div class="pick-row">
-            <button type="button" id="pick" class="btn-secondary wide">Elegir imagen o vídeo…</button>
-            <button type="button" id="clear" class="btn-secondary" hidden>Quitar</button>
-          </div>
-          <p class="muted small" id="file-name">Ningún archivo seleccionado</p>
+          <input type="file" id="file2" accept="image/*,video/*" hidden />
+          <button type="button" id="pick" class="btn-secondary wide">Elegir imagen o vídeo…</button>
+          <div class="file-list" id="file-list"></div>
+          <!--
+            La segunda imagen: la pieza pasa a llevar dos, mitad y mitad, y
+            cada una se encuadra por su cuenta igual que cuando va sola.
+          -->
+          <button type="button" id="add-photo" class="btn-secondary wide" hidden>
+            Añadir nueva imagen
+          </button>
         </div>
 
         <div class="field">
           <label for="zoom">
-            Tamaño
+            Tamaño <span id="zoom-which"></span>
             <span class="muted small">· <span id="zoom-value">100</span> %</span>
           </label>
           <input type="range" id="zoom" min="1" max="3" step="0.01" value="1" />
         </div>
 
+        <details class="section" id="inset-section">
+          <summary>5 · Mosca · opcional</summary>
+          <p class="muted small hint">
+            Un círculo con el aro del color del resaltado. Sale con este
+            apartado abierto y se quita al plegarlo. Vacío sirve para señalar
+            algo de la foto; con una imagen dentro es la mosca de siempre.
+          </p>
+          <div class="field">
+            <input type="file" id="inset-file" accept="image/*" hidden />
+            <div class="pick-row">
+              <button type="button" id="inset-pick" class="btn-secondary wide">
+                Poner una imagen dentro…
+              </button>
+              <button type="button" id="inset-clear" class="btn-secondary" hidden>Quitar</button>
+            </div>
+            <p class="muted small" id="inset-name"></p>
+          </div>
+          <div class="field">
+            <label for="inset-size">
+              Tamaño
+              <span class="muted small">· <span id="inset-size-value"></span> px de diámetro</span>
+            </label>
+            <input type="range" id="inset-size" min="50" max="460" step="1" />
+          </div>
+          <div id="inset-image" hidden>
+            <div class="field">
+              <label for="inset-zoom">
+                Zoom de la imagen
+                <span class="muted small">· amplía lo que hay dentro del círculo</span>
+              </label>
+              <input type="range" id="inset-zoom" min="1" max="3" step="0.01" />
+            </div>
+            <div class="field">
+              <label id="inset-mode-label">Al arrastrar sobre la mosca</label>
+              <div class="seg" role="radiogroup" aria-labelledby="inset-mode-label">
+                <button type="button" class="seg-btn" id="inset-move" role="radio">MOVERLA</button>
+                <button type="button" class="seg-btn" id="inset-frame" role="radio">ENCUADRAR</button>
+              </div>
+            </div>
+          </div>
+          <p class="muted small hint">
+            Sobre la vista previa se arrastra para colocarla, y la rueda o el
+            pellizco le cambian el tamaño.
+          </p>
+        </details>
+
         <details class="section">
-          <summary>5 · Colores</summary>
+          <summary>6 · Colores</summary>
           <p class="muted small hint">Valen para el hilo entero, no solo para esta pieza.</p>
           <div class="colors">
             <div class="field">
