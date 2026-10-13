@@ -62,11 +62,11 @@ interface Plain {
  * nuestra, no del idioma, y pegados a la palabra la convierten en otra cosa.
  * Se guarda de donde salio cada caracter para poder volver.
  */
-function plain(text: string): Plain {
+function plain(text: string, marks: string): Plain {
   let out = "";
   const map: number[] = [];
   for (let i = 0; i < text.length; i += 1) {
-    if (text[i] === "*") continue;
+    if (marks.includes(text[i]!)) continue;
     map.push(i);
     out += text[i];
   }
@@ -99,9 +99,13 @@ function matchCase(original: string, replacement: string): string {
 /**
  * Devuelve lo que LanguageTool encuentra. Lanza si no se puede consultar, para
  * que quien llama decida — aqui la revision nunca debe estorbar al generado.
+ *
+ * `marks` son los caracteres de marca que hay que quitar antes de preguntar.
+ * Casi todas las herramientas solo tienen el asterisco del resaltado; el hilo
+ * tiene ademas el «+» del destacado.
  */
-export async function check(text: string): Promise<Issue[]> {
-  const { text: clean, map } = plain(text);
+export async function check(text: string, marks = "*"): Promise<Issue[]> {
+  const { text: clean, map } = plain(text, marks);
   if (clean.trim().length === 0) return [];
 
   const res = await fetch(ENDPOINT, {

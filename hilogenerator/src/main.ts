@@ -5,10 +5,11 @@ import {
   COLOR_HIGHLIGHT,
   COLOR_TEXT,
   COLORS,
-  HIGHLIGHT_SCALE,
-  HIGHLIGHT_SCALE_MAX,
-  HIGHLIGHT_SCALE_MIN,
-  MARGIN_BOTTOM,
+  BAND_PAD_MAX,
+  BAND_PAD_MIN,
+  BIG_SCALE,
+  BIG_SCALE_MAX,
+  BIG_SCALE_MIN,
   MARGIN_MAX,
   MARGIN_MIN,
   MARGIN_SIDE,
@@ -53,7 +54,6 @@ const kindHintEl = need<HTMLParagraphElement>("kind-hint");
 const textEl = need<HTMLTextAreaElement>("text");
 const sizeEl = need<HTMLInputElement>("size");
 const sizeValueEl = need<HTMLSpanElement>("size-value");
-const hlFieldEl = need<HTMLDivElement>("hl-field");
 const hlEl = need<HTMLInputElement>("hl");
 const hlValueEl = need<HTMLSpanElement>("hl-value");
 const topSectionEl = need<HTMLDetailsElement>("top-section");
@@ -66,6 +66,8 @@ const marginBottomEl = need<HTMLInputElement>("margin-bottom");
 const marginBottomValueEl = need<HTMLSpanElement>("margin-bottom-value");
 const marginSideEl = need<HTMLInputElement>("margin-side");
 const marginSideValueEl = need<HTMLSpanElement>("margin-side-value");
+const bandPadEl = need<HTMLInputElement>("band-pad");
+const bandPadValueEl = need<HTMLSpanElement>("band-pad-value");
 const dropEl = need<HTMLDivElement>("drop");
 const fileEl = need<HTMLInputElement>("file");
 const pickEl = need<HTMLButtonElement>("pick");
@@ -141,7 +143,9 @@ interface Slide {
   marginBottom: number;
   marginTop: number;
   marginSide: number;
-  highlightScale: number;
+  bandPad: number;
+  /** Lo que crece lo +destacado+. Lo *resaltado* solo cambia de color. */
+  bigScale: number;
   media: Media | null;
   transform: MediaTransform;
   flip: boolean;
@@ -154,7 +158,7 @@ interface Slide {
 function newSlide(kind: Kind): Slide {
   const thumb = document.createElement("canvas");
   thumb.width = 108;
-  thumb.height = 144;
+  thumb.height = 135;
   return {
     kind,
     text: "",
@@ -162,10 +166,11 @@ function newSlide(kind: Kind): Slide {
     topOn: false,
     topText: "",
     topSize: STYLES[kind].size,
-    marginBottom: MARGIN_BOTTOM,
+    marginBottom: STYLES[kind].marginBottom,
     marginTop: MARGIN_TOP,
     marginSide: MARGIN_SIDE,
-    highlightScale: HIGHLIGHT_SCALE,
+    bandPad: STYLES[kind].bandPad,
+    bigScale: BIG_SCALE,
     media: null,
     transform: { zoom: 1, offsetX: 0, offsetY: 0 },
     flip: false,
@@ -201,8 +206,8 @@ function options(s: Slide, placeholder: boolean): RenderOptions {
     marginBottom: s.marginBottom,
     marginTop: s.marginTop,
     marginSide: s.marginSide,
-    // En la slide el resaltado solo cambia de color.
-    highlightScale: s.kind === "portada" ? s.highlightScale : 1,
+    bandPad: s.bandPad,
+    bigScale: s.bigScale,
     colorText: textColorEl.value,
     colorHighlight: highlightEl.value,
     placeholder,
@@ -301,9 +306,8 @@ function showSlide(): void {
   }
   kindHintEl.textContent =
     s.kind === "portada"
-      ? "Todo en mayúsculas, centrado, y con lo resaltado más grande."
+      ? "Todo en mayúsculas, centrado, y con la flecha al pie."
       : "Tal cual se escriba, alineado a la izquierda.";
-  hlFieldEl.hidden = s.kind !== "portada";
 
   for (const el of [sizeEl, topSizeEl]) {
     el.min = String(style.sizeMin);
@@ -336,9 +340,12 @@ for (const kind of ["portada", "slide"] as const) {
     const s = cur();
     if (s.kind === kind) return;
     s.kind = kind;
-    // Cada tipo tiene su letra, y un cuerpo de la una no vale para la otra.
+    // Cada tipo tiene su letra y su banda: las medidas de la una no valen
+    // para la otra.
     s.size = STYLES[kind].size;
     s.topSize = STYLES[kind].size;
+    s.marginBottom = STYLES[kind].marginBottom;
+    s.bandPad = STYLES[kind].bandPad;
     showStrip();
     showSlide();
     draw();
@@ -362,7 +369,11 @@ topSizeEl.addEventListener("input", () => {
   draw();
 });
 hlEl.addEventListener("input", () => {
-  cur().highlightScale = Number(hlEl.value);
+  cur().bigScale = Number(hlEl.value);
+  draw();
+});
+bandPadEl.addEventListener("input", () => {
+  cur().bandPad = Number(bandPadEl.value);
   draw();
 });
 marginBottomEl.addEventListener("input", () => {
@@ -922,6 +933,9 @@ previewEl.addEventListener("pointerdown", (e) => {
   }
 
   target = targetAt(e.clientX, e.clientY);
+  // Pulsar en la ventana vacia es pedir un archivo. Se apunta aqui y se abre
+  // en el `click`, que es el gesto que los navegadores aceptan para eso.
+  pickOnClick = !target && !cur().media;
   if (!target) return;
   lastX = e.clientX;
   lastY = e.clientY;
@@ -989,6 +1003,14 @@ for (const type of ["pointerup", "pointercancel"] as const) {
   });
 }
 
+/** La pulsacion empezo en la ventana vacia: al soltar, se elige archivo. */
+let pickOnClick = false;
+
+previewEl.addEventListener("click", () => {
+  if (pickOnClick && !cur().media) fileEl.click();
+  pickOnClick = false;
+});
+
 /** Una muesca de rueda manda deltaY 100, asi que con 2000 sale un ~5%. */
 const WHEEL_DIVISOR = 2000;
 /** Tope por evento, para que un golpe fuerte no pegue un salto. */
@@ -1034,7 +1056,10 @@ function draw(): void {
   // gesto sobre la previa y no el propio control.
   sizeEl.value = String(s.size);
   topSizeEl.value = String(s.topSize);
-  hlEl.value = String(s.highlightScale);
+  hlEl.value = String(s.bigScale);
+  bandPadEl.value = String(s.bandPad);
+  // La ventana vacia se pulsa; con imagen, se arrastra.
+  previewEl.style.cursor = s.media ? "grab" : "pointer";
   marginBottomEl.value = String(s.marginBottom);
   marginTopEl.value = String(s.marginTop);
   marginSideEl.value = String(s.marginSide);
@@ -1042,7 +1067,8 @@ function draw(): void {
 
   sizeValueEl.textContent = px(s.size);
   topSizeValueEl.textContent = px(s.topSize);
-  hlValueEl.textContent = String(Math.round(s.highlightScale * 100));
+  hlValueEl.textContent = String(Math.round(s.bigScale * 100));
+  bandPadValueEl.textContent = String(Math.round(s.bandPad));
   marginBottomValueEl.textContent = String(Math.round(s.marginBottom));
   marginTopValueEl.textContent = String(Math.round(s.marginTop));
   marginSideValueEl.textContent = String(Math.round(s.marginSide));
@@ -1358,7 +1384,7 @@ async function review(): Promise<void> {
   }
   setReview("Revisando el texto…");
   try {
-    const issues = await check(joined);
+    const issues = await check(joined, "*+");
     if (token !== reviewToken) return;
     reviewed = joined;
     const n = issues.length;
@@ -1394,8 +1420,10 @@ previewEl.width = CANVAS_W;
 previewEl.height = CANVAS_H;
 textColorEl.value = COLOR_TEXT;
 highlightEl.value = COLOR_HIGHLIGHT;
-hlEl.min = String(HIGHLIGHT_SCALE_MIN);
-hlEl.max = String(HIGHLIGHT_SCALE_MAX);
+hlEl.min = String(BIG_SCALE_MIN);
+hlEl.max = String(BIG_SCALE_MAX);
+bandPadEl.min = String(BAND_PAD_MIN);
+bandPadEl.max = String(BAND_PAD_MAX);
 for (const el of [marginBottomEl, marginTopEl]) {
   el.min = String(MARGIN_MIN);
   el.max = String(MARGIN_MAX);

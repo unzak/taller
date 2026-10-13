@@ -57,7 +57,7 @@ export interface EncodeJob {
   plate: Blob;
   /**
    * El lienzo de la pieza. Va por parametro porque el motor lo comparten el
-   * video meme (1080x1920) y el hilo (1080x1440), y cada uno tiene el suyo.
+   * video meme (1080x1920) y el hilo (1080x1350), y cada uno tiene el suyo.
    */
   canvas: { w: number; h: number };
   /** Donde va el video dentro del lienzo. Sale de `computeLayout`. */

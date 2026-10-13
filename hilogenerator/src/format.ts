@@ -7,9 +7,16 @@
  * valor medido, asi que sin tocar nada sale la pieza de referencia.
  */
 
-/** Lienzo de las dos referencias: 1080x1440, el 3:4 del carrusel. */
+/**
+ * Lienzo: 1080x1350, el 4:5 del feed, igual que News Maker.
+ *
+ * Las referencias miden 1080x1440 (3:4), 90 px mas de alto. Todo lo que se
+ * midio sobre ellas se cuenta desde el filo de abajo o es un tamaño, asi que
+ * vale tal cual: el texto, sus margenes y la banda quedan identicos, y los 90
+ * px salen de la ventana de la imagen.
+ */
 export const CANVAS_W = 1080;
-export const CANVAS_H = 1440;
+export const CANVAS_H = 1350;
 
 export interface Font {
   /** Nombre a secas de la familia, para comprobar si esta cargada. */
@@ -34,38 +41,48 @@ export interface Style {
   /**
    * Aire entre la baseline de una linea y la cabeza de las mayusculas de la
    * siguiente, en emes del cuerpo base. Se mide asi, y no con un interlineado,
-   * porque en la portada el resaltado va mas grande que el resto: con el aire
-   * fijo las lineas quedan igual de separadas midan lo que midan.
+   * porque lo +destacado+ va mas grande que el resto: con el aire fijo las
+   * lineas quedan igual de separadas midan lo que midan.
    */
   gapEm: number;
   trackingEm: number;
   /** Alto del difuminado con el que la banda negra entra en la imagen. */
   fade: number;
+  /** Margen inferior de partida: del filo a la baseline de la ultima linea. */
+  marginBottom: number;
+  /** Negro macizo que la banda deja entre el texto y su difuminado. */
+  bandPad: number;
+  /** La portada acaba en la flecha que invita a pasar a la siguiente. */
+  arrow: boolean;
 }
 
 /**
- * Portada: Anton, que es la letra estrecha de la referencia. Las mayusculas de
- * la primera linea miden ~97 px de alto, que con la altura de caja de la Anton
- * (0,86 emes) son 113 px de cuerpo. A ese cuerpo «OTRO AÑO CON POLEMICAS»
- * mediria 1089 px y en la referencia mide 950: la diferencia, repartida entre
- * sus letras, es un tracking de -0,055 emes, y el mismo numero sale midiendo
- * «12 DE OCTUBRE». Entre linea y linea hay ~33 px de aire.
+ * Portada: Anton, sin tracking. Medido sobre la referencia «ES OFICIAL: HABRA
+ * HUELGA GENERAL EL 11 DE NOVIEMBRE»: las dos lineas normales miden 890 y 734
+ * px de tinta, que con los anchos de la Anton salen las dos a 101 px de cuerpo
+ * con el espaciado natural de la fuente; «ES OFICIAL:» mide 675, o sea 169 px,
+ * 1,67 veces mas. La ultima baseline cae a 100 px del filo y el negro macizo
+ * empieza unos 40 px por encima del texto.
  *
  * Slide: Poppins Bold, la misma que rotula News Maker. «Un fallo impide
  * completar la» mide 935 px, que son 64 px de cuerpo sin tracking; baselines
- * cada 90 px, o sea 45 de mayuscula y otros 45 de aire.
+ * cada 90 px, o sea 45 de mayuscula y otros 45 de aire. Ultima baseline a 152
+ * px del filo y 125 de negro macizo sobre el texto.
  */
 export const STYLES: Record<Kind, Style> = {
   portada: {
     font: { family: "Anton", stack: '"Anton", Impact, "Arial Narrow", sans-serif', weight: 400 },
     upper: true,
     align: "center",
-    size: 113,
+    size: 101,
     sizeMin: 50,
     sizeMax: 220,
-    gapEm: 0.29,
-    trackingEm: -0.055,
+    gapEm: 0.24,
+    trackingEm: 0,
     fade: 90,
+    marginBottom: 100,
+    bandPad: 40,
+    arrow: true,
   },
   slide: {
     font: { family: "Poppins", stack: '"Poppins", system-ui, sans-serif', weight: 700 },
@@ -77,38 +94,51 @@ export const STYLES: Record<Kind, Style> = {
     gapEm: 0.7,
     trackingEm: 0,
     fade: 140,
+    marginBottom: 155,
+    bandPad: 124,
+    arrow: false,
   },
 };
 
 /**
- * Lo que crece el resaltado de la portada respecto al resto: en la referencia
- * «12 DE OCTUBRE» mide 133 px de alto frente a los 97 de las otras dos lineas.
- * En la slide el resaltado solo cambia de color.
+ * Lo que crece lo +destacado+ respecto al resto. Es cosa aparte del
+ * *resaltado*, que solo cambia el color: «ES OFICIAL:» va destacado y
+ * resaltado, y «HUELGA GENERAL» solo resaltado, al cuerpo de su linea.
  */
-export const HIGHLIGHT_SCALE = 1.37;
-export const HIGHLIGHT_SCALE_MIN = 1;
-export const HIGHLIGHT_SCALE_MAX = 1.8;
+export const BIG_SCALE = 1.67;
+export const BIG_SCALE_MIN = 1;
+export const BIG_SCALE_MAX = 2.4;
 
 /**
- * Margenes de partida. El inferior va del filo del lienzo a la baseline de la
- * ultima linea (1283 y 1288 en las referencias); el superior, del filo a la
- * cabeza de la primera; el lateral es el de la slide, que arranca en x = 55.
+ * Margenes de partida que no dependen del tipo. El superior va del filo a la
+ * cabeza de la primera linea; el lateral es el de la slide, que arranca en
+ * x = 55.
  */
-export const MARGIN_BOTTOM = 155;
 export const MARGIN_TOP = 120;
 export const MARGIN_SIDE = 55;
 export const MARGIN_MIN = 30;
 export const MARGIN_MAX = 760;
 export const MARGIN_SIDE_MAX = 260;
 
-/**
- * Negro macizo que la banda deja por encima del texto de abajo antes de
- * empezar a difuminarse: 123 px en la portada y 125 en la slide.
- */
-export const BAND_PAD = 124;
+/** Topes del negro macizo entre el texto y el difuminado. */
+export const BAND_PAD_MIN = 0;
+export const BAND_PAD_MAX = 320;
 
-/** Lo mismo por debajo del texto de arriba, contado desde las descendentes. */
-export const BAND_PAD_TOP = 96;
+/**
+ * La flecha de la portada, medida sobre la referencia: 170 px de ancho,
+ * centrada, con el asta de 7 px y la punta de 28 x 30, y su eje 47 px por
+ * debajo de la ultima baseline.
+ */
+export const ARROW = {
+  width: 170,
+  shaft: 7,
+  headW: 28,
+  headH: 30,
+  drop: 47,
+  /** Lo mas abajo que puede caer su eje, para que no se salga del lienzo. */
+  edge: 24,
+  color: "#d6336c",
+};
 
 /** Lo que nunca se estrecha la ventana de la imagen, crezca lo que crezca el texto. */
 export const MEDIA_MIN_H = 320;

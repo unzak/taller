@@ -1,6 +1,5 @@
 import {
-  BAND_PAD,
-  BAND_PAD_TOP,
+  ARROW,
   CANVAS_H,
   CANVAS_W,
   MEDIA_MIN_H,
@@ -9,10 +8,13 @@ import {
   type Style,
 } from "./format.js";
 
-/** Un trozo de texto con su color. Lo que va entre *asteriscos* se resalta. */
+/** Un trozo de texto, con su color y su tamaño. */
 export interface Segment {
   text: string;
+  /** Entre *asteriscos*: va del color del resaltado. */
   highlight: boolean;
+  /** Entre +mases+: va mas grande que el resto. */
+  big: boolean;
 }
 
 export interface MediaTransform {
@@ -52,27 +54,46 @@ export interface RenderOptions {
   /** Del filo de arriba a la cabeza de la primera linea. */
   marginTop: number;
   marginSide: number;
-  /** Lo que crece lo resaltado respecto al resto. 1 = solo cambia de color. */
-  highlightScale: number;
+  /** Negro macizo entre cada texto y su difuminado. */
+  bandPad: number;
+  /** Lo que crece lo +destacado+ respecto al resto. */
+  bigScale: number;
   colorText: string;
   colorHighlight: string;
   /** En la previa, la ventana vacia se pinta con un aviso. En la pieza, no. */
   placeholder: boolean;
 }
 
-/** El mismo convenio de *asteriscos* que en las otras tres herramientas. */
+const MARKS = { "*": "highlight", "+": "big" } as const;
+
+/**
+ * Parte el texto en segmentos. Hay dos marcas y son independientes:
+ * `*asi*` resalta —cambia el color— y `+asi+` destaca —agranda—. Se pueden
+ * anidar en cualquier orden: `+*ES OFICIAL:*+` sale grande y de color.
+ *
+ * Una marca solo abre si mas adelante hay otra que la cierre. Sin eso, el «+»
+ * de un «1+1» dejaria destacado todo lo que viene detras.
+ */
 export function parseSegments(text: string): Segment[] {
   const out: Segment[] = [];
-  const re = /\*([^*]+)\*/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) out.push({ text: text.slice(last, m.index), highlight: false });
-    out.push({ text: m[1] ?? "", highlight: true });
-    last = m.index + m[0].length;
+  const on = { highlight: false, big: false };
+  let run = "";
+  const flush = () => {
+    if (run.length > 0) out.push({ text: run, ...on });
+    run = "";
+  };
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i]!;
+    const mark = ch === "*" || ch === "+" ? MARKS[ch] : null;
+    if (mark && (on[mark] || text.indexOf(ch, i + 1) !== -1)) {
+      flush();
+      on[mark] = !on[mark];
+      continue;
+    }
+    run += ch;
   }
-  if (last < text.length) out.push({ text: text.slice(last), highlight: false });
-  return out.filter((s) => s.text.length > 0);
+  flush();
+  return out;
 }
 
 /** Una palabra o un espacio, con su color y lo que crece respecto al cuerpo. */
@@ -137,11 +158,11 @@ function tokenize(
   style: Style,
   text: string,
   size: number,
-  highlightScale: number,
+  bigScale: number,
 ): Token[] {
   const tokens: Token[] = [];
   for (const seg of parseSegments(text)) {
-    const scale = seg.highlight ? highlightScale : 1;
+    const scale = seg.big ? bigScale : 1;
     setFont(ctx, style, size * scale);
     const shown = style.upper ? seg.text.toUpperCase() : seg.text;
     for (const part of shown.split(/(\s+)/)) {
@@ -176,14 +197,14 @@ function compose(
   style: Style,
   text: string,
   size: number,
-  highlightScale: number,
+  bigScale: number,
   maxWidth: number,
 ): Composed {
   const lines: Line[] = [];
   let line: Token[] = [];
   let width = 0;
 
-  for (const token of tokenize(ctx, style, text, size, highlightScale)) {
+  for (const token of tokenize(ctx, style, text, size, bigScale)) {
     // Un salto de linea explicito manda sobre el ajuste automatico, y dos
     // seguidos dejan una linea en blanco: un parrafo separado a proposito.
     if (token.space && token.text.includes("\n")) {
@@ -261,15 +282,15 @@ function fit(
   ctx: CanvasRenderingContext2D,
   style: Style,
   spec: TextSpec,
-  highlightScale: number,
+  bigScale: number,
   maxWidth: number,
   maxHeight: number,
 ): Fitted {
-  const key = [style.font.family, spec.size, highlightScale, maxWidth, maxHeight, spec.text].join("|");
+  const key = [style.font.family, spec.size, bigScale, maxWidth, maxHeight, spec.text].join("|");
   const cached = fitted.get(key);
   if (cached) return cached;
 
-  const attempt = (size: number) => compose(ctx, style, spec.text, size, highlightScale, maxWidth);
+  const attempt = (size: number) => compose(ctx, style, spec.text, size, bigScale, maxWidth);
   const fits = (c: Composed) => c.height <= maxHeight && c.widest <= maxWidth + 1;
 
   let size = spec.size;
@@ -336,14 +357,14 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
   const spare =
     CANVAS_H -
     MEDIA_MIN_H -
-    (hasBottom ? opts.marginBottom + BAND_PAD : 0) -
-    (hasTop ? opts.marginTop + BAND_PAD_TOP : 0);
+    (hasBottom ? opts.marginBottom + opts.bandPad : 0) -
+    (hasTop ? opts.marginTop + opts.bandPad : 0);
   const maxHeight = Math.max(60, spare / (hasBottom && hasTop ? 2 : 1));
 
   let top: Block | null = null;
   let bandTop = 0;
   if (hasTop && opts.top) {
-    const f = fit(ctx, style, opts.top, opts.highlightScale, maxWidth, maxHeight);
+    const f = fit(ctx, style, opts.top, opts.bigScale, maxWidth, maxHeight);
     if (f.composed.lines.length > 0) {
       const y = opts.marginTop;
       top = {
@@ -356,14 +377,14 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
       };
       // Las descendentes cuentan solo donde las hay: la portada va en caja alta.
       const tail = style.upper ? 0 : desc * f.size;
-      bandTop = Math.round(Math.min(CANVAS_H - MEDIA_MIN_H, top.bottom + tail + BAND_PAD_TOP));
+      bandTop = Math.round(Math.min(CANVAS_H - MEDIA_MIN_H, top.bottom + tail + opts.bandPad));
     }
   }
 
   let bottom: Block | null = null;
   let bandBottom = CANVAS_H;
   if (hasBottom) {
-    const f = fit(ctx, style, opts.bottom, opts.highlightScale, maxWidth, maxHeight);
+    const f = fit(ctx, style, opts.bottom, opts.bigScale, maxWidth, maxHeight);
     if (f.composed.lines.length > 0) {
       const y = CANVAS_H - opts.marginBottom - f.composed.height;
       bottom = {
@@ -374,7 +395,7 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
         top: y,
         bottom: y + f.composed.height,
       };
-      bandBottom = Math.round(Math.max(bandTop + MEDIA_MIN_H, y - BAND_PAD));
+      bandBottom = Math.round(Math.max(bandTop + MEDIA_MIN_H, y - opts.bandPad));
     }
   }
 
@@ -487,7 +508,10 @@ export function render(ctx: CanvasRenderingContext2D, opts: RenderOptions): Layo
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#7d8190";
-    ctx.fillText("Suelta aquí una imagen o un vídeo", area.w / 2, area.y + area.h / 2);
+    const cy = area.y + area.h / 2;
+    ctx.fillText("Haz clic para añadir una imagen o un vídeo", area.w / 2, cy - 30);
+    ctx.font = "500 30px Inter, system-ui, sans-serif";
+    ctx.fillText("o suéltalo aquí, o pégalo con Ctrl+V", area.w / 2, cy + 30);
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
   }
@@ -544,6 +568,27 @@ function drawPlate(ctx: CanvasRenderingContext2D, opts: RenderOptions, layout: L
   for (const block of [layout.top, layout.bottom]) {
     if (block) drawBlock(ctx, opts, style, block);
   }
+  if (style.arrow) drawArrow(ctx, layout);
+}
+
+/**
+ * La flecha de la portada: cuelga de la ultima baseline, asi que sube y baja
+ * con el texto al mover el margen. Sin texto se queda en su sitio de siempre.
+ */
+function drawArrow(ctx: CanvasRenderingContext2D, layout: Layout): void {
+  const limit = layout.height - ARROW.edge;
+  const cy = Math.round(Math.min(limit, (layout.bottom?.bottom ?? limit - ARROW.drop) + ARROW.drop));
+  const x0 = (layout.width - ARROW.width) / 2;
+  const x1 = x0 + ARROW.width;
+  ctx.fillStyle = ARROW.color;
+  // El asta se mete un par de pixeles bajo la punta para que no quede junta.
+  ctx.fillRect(x0, cy - ARROW.shaft / 2, ARROW.width - ARROW.headW + 2, ARROW.shaft);
+  ctx.beginPath();
+  ctx.moveTo(x1 - ARROW.headW, cy - ARROW.headH / 2);
+  ctx.lineTo(x1, cy);
+  ctx.lineTo(x1 - ARROW.headW, cy + ARROW.headH / 2);
+  ctx.closePath();
+  ctx.fill();
 }
 
 function drawBlock(

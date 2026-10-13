@@ -64,7 +64,7 @@
         <div class="field">
           <label for="text">
             Texto inferior
-            <span class="muted small">· lo que envuelvas en *asteriscos* sale resaltado</span>
+            <span class="muted small">· *resaltado* cambia el color · +destacado+ lo agranda</span>
           </label>
           <textarea id="text" rows="3" placeholder="Escribe aquí el texto"></textarea>
         </div>
@@ -77,12 +77,12 @@
           <input type="range" id="size" step="0.5" />
         </div>
 
-        <div class="field" id="hl-field">
+        <div class="field">
           <label for="hl">
-            Tamaño del resaltado
+            Tamaño del +destacado+
             <span class="muted small">· <span id="hl-value"></span> %</span>
           </label>
-          <input type="range" id="hl" min="1" max="1.8" step="0.01" />
+          <input type="range" id="hl" min="1" max="2.4" step="0.01" />
         </div>
 
         <details class="section" id="top-section">
@@ -125,6 +125,14 @@
             <span class="muted small">· <span id="margin-side-value"></span> px</span>
           </label>
           <input type="range" id="margin-side" min="30" max="260" step="1" />
+        </div>
+
+        <div class="field">
+          <label for="band-pad">
+            Negro sobre el texto
+            <span class="muted small">· <span id="band-pad-value"></span> px antes del difuminado</span>
+          </label>
+          <input type="range" id="band-pad" min="0" max="320" step="1" />
         </div>
 
         <h2>4 · Imagen o vídeo</h2>
@@ -215,7 +223,9 @@
 
         <p class="muted small" id="preview-info"></p>
         <p class="muted small">
-          Arrastra la imagen para encuadrarla y el texto para subirlo o bajarlo.
+          Pulsa la vista previa vacía para añadir la imagen o el vídeo; también
+          vale soltarlo encima o pegarlo. Después, arrastra la imagen para
+          encuadrarla y el texto para subirlo o bajarlo.
           La rueda del ratón, o el pellizco de dos dedos, cambia el tamaño de lo
           que tengas debajo.
         </p>
@@ -261,7 +271,7 @@
         id="mini-canvas"
         class="mini-canvas"
         width="216"
-        height="288"
+        height="270"
         role="img"
         aria-label="Vista previa reducida. Tócala para ir a la vista previa completa."
       ></canvas>
