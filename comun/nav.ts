@@ -1,5 +1,5 @@
 /**
- * La barra de las tres herramientas.
+ * La barra de las herramientas del taller.
  *
  * Estaba escrita a mano en los tres `index.html`, y cada una tenia que saber de
  * las otras dos: anadir una cuarta obligaba a tocar los tres archivos y acordarse
@@ -46,6 +46,14 @@ export const TOOLS: Tool[] = [
     icon:
       '<rect x="3" y="4" width="18" height="16" rx="2.5" />' +
       '<path d="M3 9h18" /><path d="m7.6 4 2.4 5M13.1 4l2.4 5" />',
+  },
+  {
+    id: "hilogenerator",
+    name: "Hilo Generator",
+    short: "Hilo",
+    icon:
+      '<rect x="8" y="3" width="12" height="15" rx="2.5" />' +
+      '<path d="M4 7v11.5A2.5 2.5 0 0 0 6.5 21H16" /><path d="M11.5 13.5h5" />',
   },
 ];
 

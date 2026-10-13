@@ -358,7 +358,7 @@ puede servir.
 El `.wasm` son 32 MB, así que se carga desde unpkg con la versión clavada en vez
 de meterlo en el repo. Para servirlo del propio dominio, copia `ffmpeg-core.js`
 y `ffmpeg-core.wasm` de `@ffmpeg/core/dist/esm` a `public/ffmpeg/` y cambia
-`CORE_BASE` en `src/encode.ts` por `./ffmpeg`.
+`CORE_BASE` en `../comun/encode.ts` por `./ffmpeg`.
 
 ## Los assets
 
@@ -379,7 +379,7 @@ euro.
 | `src/assets/` | La plantilla del PSD y la SF Pro. |
 | `src/format.ts` | Las medidas del PSD, la tipografía y la paleta. Es lo único que hay que tocar para cambiar el diseño. |
 | `src/render.ts` | El ajuste del rótulo y del CTA, y el dibujo sobre el lienzo. No toca el DOM. |
-| `src/encode.ts` | ffmpeg en WebAssembly: de la plantilla y el rectángulo al MP4. |
+| `../comun/encode.ts` | ffmpeg en WebAssembly: de la plantilla y el rectángulo al MP4. Lo comparte con el hilo. |
 | `src/main.ts` | La interfaz: carga del vídeo, encuadre, colores, CTA y descarga. |
 | `../comun/` | Lo que comparten las tres: la piel, la barra de herramientas y la consulta a LanguageTool. |
 

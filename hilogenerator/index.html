@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hilo Generator · Cabronazi</title>
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#ed1470" />
+    <link rel="icon" type="image/svg+xml" href="./src/assets/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Inter es la letra de la interfaz. Anton y Poppins no son decoracion: son
+      las dos con las que se rotula el hilo, la portada y las slides, asi que
+      tienen que estar cargadas antes de medir nada.
+    -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400..900&family=Poppins:wght@700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Lo rellena `comun/nav.ts`. El alto lo reserva la piel. -->
+    <nav class="tools" aria-label="Herramientas"></nav>
+
+    <header class="top">
+      <div class="brand-kicker"><span class="live-dot"></span> Taller Cabronazi</div>
+      <div class="brand">
+        <img
+          class="brand-logo"
+          src="./src/assets/favicon.svg"
+          alt=""
+          width="96"
+          height="96"
+          decoding="async"
+        />
+        <h1>Hilo Generator</h1>
+      </div>
+    </header>
+
+    <!--
+      El hilo entero, pieza a pieza. Lo rellena `main.ts`: una miniatura por
+      pieza, y al final el boton de añadir otra.
+    -->
+    <section class="strip" aria-label="Piezas del hilo">
+      <div class="strip-thumbs" id="strip"></div>
+      <div class="strip-actions">
+        <button type="button" id="move-left" class="btn-secondary" title="Mover antes">←</button>
+        <button type="button" id="move-right" class="btn-secondary" title="Mover después">→</button>
+        <button type="button" id="remove" class="btn-secondary">Eliminar</button>
+      </div>
+    </section>
+
+    <main class="layout">
+      <section class="panel">
+        <h2>1 · Tipo</h2>
+        <div class="seg" role="radiogroup" aria-label="Tipo de pieza">
+          <button type="button" class="seg-btn" id="kind-portada" role="radio">PORTADA</button>
+          <button type="button" class="seg-btn" id="kind-slide" role="radio">SLIDE</button>
+        </div>
+        <p class="muted small hint" id="kind-hint"></p>
+
+        <h2>2 · Texto</h2>
+        <div class="field">
+          <label for="text">
+            Texto inferior
+            <span class="muted small">· lo que envuelvas en *asteriscos* sale resaltado</span>
+          </label>
+          <textarea id="text" rows="3" placeholder="Escribe aquí el texto"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="size">
+            Tamaño de letra
+            <span class="muted small">· <span id="size-value"></span> px</span>
+          </label>
+          <input type="range" id="size" step="0.5" />
+        </div>
+
+        <div class="field" id="hl-field">
+          <label for="hl">
+            Tamaño del resaltado
+            <span class="muted small">· <span id="hl-value"></span> %</span>
+          </label>
+          <input type="range" id="hl" min="1" max="1.8" step="0.01" />
+        </div>
+
+        <details class="section" id="top-section">
+          <summary>Texto superior · opcional</summary>
+          <p class="muted small hint">
+            Sale con este apartado abierto: al plegarlo se quita, y con él su
+            difuminado. El texto se queda escrito para la próxima.
+          </p>
+          <div class="field">
+            <label for="top-text">Texto</label>
+            <textarea id="top-text" rows="2"></textarea>
+          </div>
+          <div class="field">
+            <label for="top-size">
+              Tamaño de letra
+              <span class="muted small">· <span id="top-size-value"></span> px</span>
+            </label>
+            <input type="range" id="top-size" step="0.5" />
+          </div>
+          <div class="field">
+            <label for="margin-top">
+              Margen superior
+              <span class="muted small">· <span id="margin-top-value"></span> px</span>
+            </label>
+            <input type="range" id="margin-top" min="30" max="760" step="1" />
+          </div>
+        </details>
+
+        <h2>3 · Márgenes</h2>
+        <div class="field">
+          <label for="margin-bottom">
+            Margen inferior
+            <span class="muted small">· <span id="margin-bottom-value"></span> px</span>
+          </label>
+          <input type="range" id="margin-bottom" min="30" max="760" step="1" />
+        </div>
+        <div class="field">
+          <label for="margin-side">
+            Margen lateral
+            <span class="muted small">· <span id="margin-side-value"></span> px</span>
+          </label>
+          <input type="range" id="margin-side" min="30" max="260" step="1" />
+        </div>
+
+        <h2>4 · Imagen o vídeo</h2>
+        <div class="field">
+          <input type="file" id="file" accept="image/*,video/*" multiple hidden />
+          <div class="pick-row">
+            <button type="button" id="pick" class="btn-secondary wide">Elegir imagen o vídeo…</button>
+            <button type="button" id="clear" class="btn-secondary" hidden>Quitar</button>
+          </div>
+          <p class="muted small" id="file-name">Ningún archivo seleccionado</p>
+        </div>
+
+        <div class="field">
+          <label for="zoom">
+            Tamaño
+            <span class="muted small">· <span id="zoom-value">100</span> %</span>
+          </label>
+          <input type="range" id="zoom" min="1" max="3" step="0.01" value="1" />
+        </div>
+
+        <details class="section">
+          <summary>5 · Colores</summary>
+          <p class="muted small hint">Valen para el hilo entero, no solo para esta pieza.</p>
+          <div class="colors">
+            <div class="field">
+              <label for="color-text">Texto</label>
+              <input type="color" id="color-text" value="#ffffff" />
+              <div class="swatches" data-for="color-text"></div>
+            </div>
+            <div class="field">
+              <label for="color-highlight">Resaltado</label>
+              <input type="color" id="color-highlight" value="#ffff00" />
+              <div class="swatches" data-for="color-highlight"></div>
+            </div>
+          </div>
+        </details>
+
+        <button type="button" id="generate" class="btn">GENERA EL HILO</button>
+        <div class="progress" id="progress" hidden><div id="progress-bar"></div></div>
+        <p class="status" id="status"></p>
+      </section>
+
+      <section class="panel" id="preview-panel">
+        <h2>Vista previa</h2>
+        <div class="stage">
+          <canvas id="preview"></canvas>
+          <button type="button" id="flip" class="stage-btn" aria-pressed="false"
+                  title="Voltear en horizontal" aria-label="Voltear en horizontal">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v18" stroke-dasharray="3 3" />
+              <path d="M8.5 8 4.5 12l4 4" />
+              <path d="M15.5 8l4 4-4 4" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Reproducir y recortar: solo cuando la pieza lleva vídeo. -->
+        <div class="bars" id="bars" hidden>
+          <button type="button" id="play" class="icon-btn" aria-pressed="false"
+                  title="Reproducir la previa" aria-label="Reproducir la previa">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+              <path class="i-play" d="M8 5v14l11-7z" />
+              <path class="i-pause" d="M7 5h3.4v14H7zm6.6 0H17v14h-3.4z" />
+            </svg>
+          </button>
+          <input type="range" id="seek" min="0" max="1" step="0.001" value="0"
+                 aria-label="Fotograma de la previa" />
+          <span class="muted small" id="seek-value">0:00 / 0:00</span>
+
+          <span class="icon-btn is-static" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="6" cy="18" r="2.5" />
+              <circle cx="6" cy="6" r="2.5" />
+              <path d="M8.2 7.7 19.5 18.5M19.5 5.5 8.2 16.3" />
+            </svg>
+          </span>
+          <div class="trim-track" id="trim-track">
+            <div class="trim-span" id="trim-span"></div>
+            <div class="trim-handle" id="trim-in" tabindex="0" role="slider"
+                 aria-label="Inicio del recorte"></div>
+            <div class="trim-handle" id="trim-out" tabindex="0" role="slider"
+                 aria-label="Final del recorte"></div>
+          </div>
+          <span class="muted small" id="trim-value">0:00 – 0:00</span>
+        </div>
+
+        <p class="muted small" id="preview-info"></p>
+        <p class="muted small">
+          Arrastra la imagen para encuadrarla y el texto para subirlo o bajarlo.
+          La rueda del ratón, o el pellizco de dos dedos, cambia el tamaño de lo
+          que tengas debajo.
+        </p>
+      </section>
+    </main>
+
+    <section class="output" id="output" hidden>
+      <h2>Hilo generado</h2>
+      <div class="review" id="review" hidden>
+        <div class="review-head">
+          <p id="review-title"></p>
+          <a class="lt" href="https://languagetool.org" target="_blank" rel="noopener"
+            >LanguageTool</a
+          >
+        </div>
+        <ul id="review-list" hidden></ul>
+        <div class="review-fix" id="review-fix" hidden>
+          <p id="review-proposal"></p>
+          <button type="button" id="fix" class="btn-secondary">CORREGIR</button>
+        </div>
+      </div>
+
+      <div class="results" id="results"></div>
+      <button type="button" id="download" class="btn" hidden>Descargar todo</button>
+    </section>
+
+    <div id="drop" class="drop" hidden><p>Suelta la imagen o el vídeo</p></div>
+
+    <!-- Los <video> de las piezas que llevan vídeo, uno por pieza. -->
+    <div id="sources" hidden></div>
+
+    <!-- Vista previa flotante. Solo aparece en pantallas estrechas. -->
+    <div id="mini" class="mini" aria-hidden="true">
+      <button
+        type="button"
+        id="mini-close"
+        class="mini-close"
+        aria-label="Cerrar la vista previa flotante"
+      >
+        ×
+      </button>
+      <canvas
+        id="mini-canvas"
+        class="mini-canvas"
+        width="216"
+        height="288"
+        role="img"
+        aria-label="Vista previa reducida. Tócala para ir a la vista previa completa."
+      ></canvas>
+    </div>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

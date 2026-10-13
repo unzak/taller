@@ -6,8 +6,14 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 // para siempre, sin un solo error en la consola.
 import ffmpegWorkerURL from "@ffmpeg/ffmpeg/worker?worker&url";
 import { fetchFile } from "@ffmpeg/util";
-import { CANVAS_H, CANVAS_W } from "./format.js";
-import type { Rect } from "./render.js";
+
+/** Un rectangulo en pixeles de lienzo, ya redondeado. */
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 /**
  * El motor. Es una build de ffmpeg compilada a WebAssembly, asi que el montaje
@@ -47,8 +53,13 @@ const PRESET = "veryfast";
 export interface EncodeJob {
   /** El video original, tal cual lo eligio el usuario. */
   source: File;
-  /** La plantilla con el rotulo, PNG con alfa de 1080x1920. */
+  /** La plantilla con el rotulo, PNG con alfa del tamaño del lienzo. */
   plate: Blob;
+  /**
+   * El lienzo de la pieza. Va por parametro porque el motor lo comparten el
+   * video meme (1080x1920) y el hilo (1080x1440), y cada uno tiene el suyo.
+   */
+  canvas: { w: number; h: number };
   /** Donde va el video dentro del lienzo. Sale de `computeLayout`. */
   rect: Rect;
   /** Voltea el video en horizontal, igual que en la previa. */
@@ -97,16 +108,16 @@ async function engine(handlers: EncodeHandlers): Promise<FFmpeg> {
  * No hace falta recortarlo al hueco de la plantilla: por encima y por debajo
  * del hueco la plantilla es negro opaco, asi que lo que se salga queda tapado.
  */
-function place(rect: Rect): { crop: string; pad: string } {
+function place(rect: Rect, canvas: { w: number; h: number }): { crop: string; pad: string } {
   const cx = Math.max(0, -rect.x);
   const cy = Math.max(0, -rect.y);
   const px = Math.max(0, rect.x);
   const py = Math.max(0, rect.y);
-  const cw = Math.min(rect.w - cx, CANVAS_W - px);
-  const ch = Math.min(rect.h - cy, CANVAS_H - py);
+  const cw = Math.min(rect.w - cx, canvas.w - px);
+  const ch = Math.min(rect.h - cy, canvas.h - py);
   return {
     crop: `crop=${cw}:${ch}:${cx}:${cy}`,
-    pad: `pad=${CANVAS_W}:${CANVAS_H}:${px}:${py}:color=black`,
+    pad: `pad=${canvas.w}:${canvas.h}:${px}:${py}:color=black`,
   };
 }
 
@@ -118,7 +129,7 @@ function extension(name: string): string {
 
 function args(input: string, audio: "copy" | "aac", job: EncodeJob): string[] {
   const { rect } = job;
-  const { crop, pad } = place(rect);
+  const { crop, pad } = place(rect, job.canvas);
   // Escalar, quitar lo que se sale, colocar sobre el lienzo negro y pegarle la
   // plantilla encima. Es exactamente lo que hace la previa en el canvas.
   //

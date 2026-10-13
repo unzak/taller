@@ -14,6 +14,7 @@ const QUE_HACE: Record<string, string> = {
   "news-maker": "El titular de Cabronazi sobre la foto, con el filete y el logo de la vertical.",
   memegenerator: "La banda con el texto arriba y la foto debajo. Sin plantilla fija.",
   videomemegenerator: "La plantilla del PSD sobre un vídeo vertical, montado en MP4 aquí mismo.",
+  hilogenerator: "El carrusel entero: la portada y sus slides, con imagen o con vídeo.",
 };
 
 nav(null);

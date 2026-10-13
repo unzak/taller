@@ -25,12 +25,13 @@ export default defineConfig({
         "news-maker": "news-maker/index.html",
         memegenerator: "memegenerator/index.html",
         videomemegenerator: "videomemegenerator/index.html",
+        hilogenerator: "hilogenerator/index.html",
       },
     },
   },
 
   worker: {
-    // El worker de ffmpeg, en el video meme, se carga con `type: "module"`.
+    // El worker de ffmpeg, en el video meme y en el hilo, se carga con `type: "module"`.
     format: "es",
   },
 });

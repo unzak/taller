@@ -1,5 +1,5 @@
 import overlayUrl from "./assets/overlay.png";
-import { encode } from "./encode.js";
+import { encode } from "../../comun/encode.js";
 import {
   CANVAS_H,
   CANVAS_W,
@@ -960,6 +960,7 @@ function generate(): void {
           source: state.file!,
           plate: await plate(),
           rect: layout.video,
+          canvas: { w: CANVAS_W, h: CANVAS_H },
           flip: state.flip,
           trim: trimRange(),
         },

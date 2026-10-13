@@ -1,6 +1,6 @@
 # taller
 
-El **Taller Cabronazi**: las tres herramientas de la casa en un repositorio.
+El **Taller Cabronazi**: las cuatro herramientas de la casa en un repositorio.
 
 - [**news-maker**](news-maker/README.md) — el titular de Cabronazi sobre la foto,
   1080 × 1350, clavado sobre su PSD.
@@ -8,6 +8,8 @@ El **Taller Cabronazi**: las tres herramientas de la casa en un repositorio.
   foto debajo, sin plantilla fija.
 - [**videomemegenerator**](videomemegenerator/README.md) — la plantilla del PSD
   sobre un vídeo vertical, montado en MP4 en el propio navegador.
+- [**hilogenerator**](hilogenerator/README.md) — el carrusel entero: una portada
+  y sus slides, cada una con su imagen o su vídeo, a 1080 × 1440.
 
 **Todo ocurre en el navegador.** No hay servidor y no hay nada que instalar para
 usarlas: la página publicada funciona sola, y nada de lo que se suelta ahí sale
@@ -33,7 +35,8 @@ claros. Son tres proyectos que comparten piel, no una librería con tres pieles.
 | Archivo | Qué hay dentro |
 | --- | --- |
 | `comun/piel.css` | Lo que era **byte a byte igual** en las tres hojas: la paleta del panel Pulso Viral, la barra de herramientas, la cabecera, los paneles, los campos y el cuadro de la revisión. |
-| `comun/nav.ts` | La lista de las tres y el menú que las enlaza. Añadir una cuarta es tocar `TOOLS` y nada más. |
+| `comun/nav.ts` | La lista de herramientas y el menú que las enlaza. Añadir otra es tocar `TOOLS` y nada más: así entró el hilo. |
+| `comun/encode.ts` | El motor de vídeo, ffmpeg en WebAssembly. Lo usan el vídeo meme y el hilo, cada uno con su lienzo. |
 | `comun/spell.ts` | La consulta a LanguageTool, que estaba idéntica en los tres repositorios. |
 | `comun/portada.ts` · `portada.css` · `favicon.svg` | La portada del taller, que es lo que hay en la raíz del sitio. |
 
@@ -63,8 +66,8 @@ npm install
 npm run dev
 ```
 
-Un solo servidor sirve las cuatro páginas: la portada en `/` y cada herramienta
-en `/news-maker/`, `/memegenerator/` y `/videomemegenerator/`.
+Un solo servidor sirve las cinco páginas: la portada en `/` y cada herramienta
+en `/news-maker/`, `/memegenerator/`, `/videomemegenerator/` y `/hilogenerator/`.
 
 ## Publicar
 
@@ -80,8 +83,8 @@ cada una por separado, y es lo que ha permitido moverlas de sitio sin tocar la
 configuración.
 
 Los trozos comunes salen **una sola vez**: `nav` y `spell` quedan en su propio
-fragmento y las tres lo comparten. Y ffmpeg sigue estando solo en la de vídeo,
-que es la única que lo importa.
+fragmento y todas lo comparten. Y ffmpeg sigue estando solo en las dos que
+montan vídeo, que son las únicas que lo importan.
 
 El workflow de `.github/workflows` despliega a Pages en cada push a `main`.
 
@@ -91,7 +94,8 @@ El workflow de `.github/workflows` despliega a Pages en cada push a `main`.
 comun/                 la piel, el menú, LanguageTool y la portada
 news-maker/            index.html · src/{format,render,main}.ts · src/assets/
 memegenerator/         idem
-videomemegenerator/    idem, más src/encode.ts (ffmpeg)
+videomemegenerator/    idem; el motor de vídeo está en comun/encode.ts
+hilogenerator/         idem
 index.html             la portada del taller
 ```
 
