@@ -18,7 +18,7 @@ ventana de la imagen.
 | Caja | todo en mayúsculas | tal cual se escriba |
 | Alineación | centrada | a la izquierda |
 | Cuerpo de partida | 101 px | 64 px |
-| Al pie | la flecha rosa | nada |
+| Al pie | la flecha rosa (casilla «Flecha» para quitarla) | nada |
 
 El hilo arranca con una portada y lo que se añade con el `+` son slides, pero el
 tipo se cambia en cualquier pieza.
@@ -52,7 +52,9 @@ abajo, arriba con el de arriba—, y sin texto la imagen llega al borde.
 La imagen se encaja en la ventana que queda entre las bandas, así que mover un
 margen o alargar un texto la reencuadra sola.
 
-En la portada, la flecha cuelga de la última línea: sube y baja con el texto.
+En la portada, la flecha va fija, a 53 px del filo de abajo: mover el texto o
+su margen no la arrastra. La casilla «Flecha», que solo sale en portada, la
+quita.
 
 ## Añadir la imagen o el vídeo
 

@@ -52,7 +52,7 @@ export interface Style {
   marginBottom: number;
   /** Negro macizo que la banda deja entre el texto y su difuminado. */
   bandPad: number;
-  /** La portada acaba en la flecha que invita a pasar a la siguiente. */
+  /** La portada puede acabar en la flecha que invita a pasar a la siguiente. */
   arrow: boolean;
 }
 
@@ -126,17 +126,17 @@ export const BAND_PAD_MAX = 320;
 
 /**
  * La flecha de la portada, medida sobre la referencia: 170 px de ancho,
- * centrada, con el asta de 7 px y la punta de 28 x 30, y su eje 47 px por
- * debajo de la ultima baseline.
+ * centrada, con el asta de 7 px y la punta de 28 x 30, y su eje a 53 px del
+ * filo de abajo. Esta siempre ahi: no sigue al texto, asi que en todas las
+ * portadas cae en el mismo sitio.
  */
 export const ARROW = {
   width: 170,
   shaft: 7,
   headW: 28,
   headH: 30,
-  drop: 47,
-  /** Lo mas abajo que puede caer su eje, para que no se salga del lienzo. */
-  edge: 24,
+  /** Del filo de abajo del lienzo al eje de la flecha. */
+  bottom: 53,
   color: "#d6336c",
 };
 

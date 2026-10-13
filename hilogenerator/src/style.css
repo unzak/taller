@@ -730,6 +730,27 @@ input[type="range"]:disabled {
   margin: 8px 0 10px;
 }
 
+/* La casilla de la flecha, con su texto al lado y no debajo. */
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.check[hidden] {
+  display: none;
+}
+
+.check input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 /* Sin nada que devolver, el boton de todo por defecto se apaga. */
 #reset-all {
   font-size: 12px;

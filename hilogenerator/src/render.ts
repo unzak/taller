@@ -87,6 +87,8 @@ export interface RenderOptions {
   bandPad: number;
   /** Lo que crece lo +destacado+ respecto al resto. */
   bigScale: number;
+  /** La flecha del pie. Solo la lleva la portada, y se puede quitar. */
+  arrow: boolean;
   colorText: string;
   colorHighlight: string;
   /** En la previa, la ventana vacia se pinta con un aviso. En la pieza, no. */
@@ -738,16 +740,15 @@ function drawPlate(
   for (const block of [layout.top, layout.bottom]) {
     if (block) drawBlock(ctx, opts, style, block);
   }
-  if (style.arrow) drawArrow(ctx, layout);
+  if (style.arrow && opts.arrow) drawArrow(ctx, layout);
 }
 
 /**
- * La flecha de la portada: cuelga de la ultima baseline, asi que sube y baja
- * con el texto al mover el margen. Sin texto se queda en su sitio de siempre.
+ * La flecha de la portada. Va fija, a la misma altura en todas: mover el texto
+ * o su margen no la arrastra.
  */
 function drawArrow(ctx: CanvasRenderingContext2D, layout: Layout): void {
-  const limit = layout.height - ARROW.edge;
-  const cy = Math.round(Math.min(limit, (layout.bottom?.bottom ?? limit - ARROW.drop) + ARROW.drop));
+  const cy = layout.height - ARROW.bottom;
   const x0 = (layout.width - ARROW.width) / 2;
   const x1 = x0 + ARROW.width;
   ctx.fillStyle = ARROW.color;

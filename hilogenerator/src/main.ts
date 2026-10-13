@@ -56,6 +56,8 @@ const kindEls: Record<Kind, HTMLButtonElement> = {
 };
 const kindHintEl = need<HTMLParagraphElement>("kind-hint");
 const resetAllEl = need<HTMLButtonElement>("reset-all");
+const arrowFieldEl = need<HTMLLabelElement>("arrow-field");
+const arrowEl = need<HTMLInputElement>("arrow");
 const textEl = need<HTMLTextAreaElement>("text");
 const sizeEl = need<HTMLInputElement>("size");
 const sizeValueEl = need<HTMLSpanElement>("size-value");
@@ -173,6 +175,8 @@ interface Slide {
   bandPad: number;
   /** Lo que crece lo +destacado+. Lo *resaltado* solo cambia de color. */
   bigScale: number;
+  /** La flecha del pie. Solo cuenta en la portada. */
+  arrow: boolean;
   /** Ninguna, una, o dos que se reparten la ventana. Como mucho un video. */
   items: Item[];
   /** A cual de las dos le hablan el zoom y el volteo: la ultima tocada. */
@@ -201,6 +205,7 @@ function newSlide(kind: Kind): Slide {
     marginSide: MARGIN_SIDE,
     bandPad: STYLES[kind].bandPad,
     bigScale: BIG_SCALE,
+    arrow: true,
     items: [],
     active: 0,
     inset: {
@@ -265,6 +270,7 @@ function options(s: Slide, placeholder: boolean): RenderOptions {
     marginSide: s.marginSide,
     bandPad: s.bandPad,
     bigScale: s.bigScale,
+    arrow: s.arrow,
     colorText: textColorEl.value,
     colorHighlight: highlightEl.value,
     placeholder,
@@ -374,6 +380,9 @@ function showSlide(): void {
   topTextEl.value = s.topText;
   topSectionEl.open = s.topOn;
 
+  arrowFieldEl.hidden = !STYLES[s.kind].arrow;
+  arrowEl.checked = s.arrow;
+
   showFiles();
   showActive();
   showInset();
@@ -414,6 +423,10 @@ sizeEl.addEventListener("input", () => {
 });
 topSizeEl.addEventListener("input", () => {
   cur().topSize = Number(topSizeEl.value);
+  draw();
+});
+arrowEl.addEventListener("change", () => {
+  cur().arrow = arrowEl.checked;
   draw();
 });
 hlEl.addEventListener("input", () => {
