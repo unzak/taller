@@ -55,6 +55,7 @@ const kindEls: Record<Kind, HTMLButtonElement> = {
   slide: need<HTMLButtonElement>("kind-slide"),
 };
 const kindHintEl = need<HTMLParagraphElement>("kind-hint");
+const resetAllEl = need<HTMLButtonElement>("reset-all");
 const textEl = need<HTMLTextAreaElement>("text");
 const sizeEl = need<HTMLInputElement>("size");
 const sizeValueEl = need<HTMLSpanElement>("size-value");
@@ -440,6 +441,118 @@ topSectionEl.addEventListener("toggle", () => {
   draw();
 });
 for (const el of [textColorEl, highlightEl]) el.addEventListener("input", draw);
+
+// --- Volver al valor por defecto --------------------------------------------
+
+/**
+ * Cada barra, con el valor del que parte. Casi todo aqui se mueve tambien con
+ * un gesto sobre la previa, y un gesto se escapa con facilidad: en cuanto una
+ * barra deja de estar en su sitio le sale al lado el boton que la devuelve.
+ *
+ * Va barra a barra y no en un solo boton para todo, porque lo normal es haber
+ * movido una sin querer y querer conservar las demas.
+ */
+interface Reset {
+  input: HTMLInputElement;
+  get: (s: Slide) => number;
+  def: (s: Slide) => number;
+  set: (s: Slide, value: number) => void;
+}
+
+const RESETS: Reset[] = [
+  { input: sizeEl, get: (s) => s.size, def: (s) => STYLES[s.kind].size, set: (s, v) => (s.size = v) },
+  { input: hlEl, get: (s) => s.bigScale, def: () => BIG_SCALE, set: (s, v) => (s.bigScale = v) },
+  {
+    input: topSizeEl,
+    get: (s) => s.topSize,
+    def: (s) => STYLES[s.kind].size,
+    set: (s, v) => (s.topSize = v),
+  },
+  { input: marginTopEl, get: (s) => s.marginTop, def: () => MARGIN_TOP, set: (s, v) => (s.marginTop = v) },
+  {
+    input: marginBottomEl,
+    get: (s) => s.marginBottom,
+    def: (s) => STYLES[s.kind].marginBottom,
+    set: (s, v) => (s.marginBottom = v),
+  },
+  { input: marginSideEl, get: (s) => s.marginSide, def: () => MARGIN_SIDE, set: (s, v) => (s.marginSide = v) },
+  {
+    input: bandPadEl,
+    get: (s) => s.bandPad,
+    def: (s) => STYLES[s.kind].bandPad,
+    set: (s, v) => (s.bandPad = v),
+  },
+  {
+    input: zoomEl,
+    get: (s) => item(s)?.transform.zoom ?? 1,
+    def: () => 1,
+    // Volver al tamaño de partida es tambien volver al centro: con el zoom a 1
+    // no sobra imagen que mover a lo ancho o a lo alto, segun el formato.
+    set: (s) => {
+      const it = item(s);
+      if (it) it.transform = { zoom: 1, offsetX: 0, offsetY: 0 };
+    },
+  },
+  {
+    input: insetSizeEl,
+    get: (s) => s.inset.radius,
+    def: () => INSET.radius,
+    set: (s, v) => (s.inset.radius = v),
+  },
+  { input: insetZoomEl, get: (s) => s.inset.zoom, def: () => 1, set: (s, v) => (s.inset.zoom = v) },
+];
+
+const resetButtons = RESETS.map((r) => {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "reset";
+  btn.textContent = "↺ por defecto";
+  btn.title = "Volver al valor por defecto";
+  btn.hidden = true;
+  btn.addEventListener("click", (e) => {
+    // Va dentro del `label`: sin esto, pulsarlo le daria ademas el foco a la barra.
+    e.preventDefault();
+    r.set(cur(), r.def(cur()));
+    draw();
+  });
+  document.querySelector(`label[for="${r.input.id}"]`)?.append(btn);
+  return btn;
+});
+
+/** true cuando la barra no esta en su valor de partida. */
+function moved(r: Reset, s: Slide): boolean {
+  return Math.abs(r.get(s) - r.def(s)) >= 0.005;
+}
+
+/** Algun encuadre de la pieza no esta en el centro y a su tamaño. */
+function framed(s: Slide): boolean {
+  return s.items.some(
+    (it) => it.transform.zoom !== 1 || it.transform.offsetX !== 0 || it.transform.offsetY !== 0,
+  );
+}
+
+/**
+ * Enseña el boton solo en las barras que no estan en su valor de partida, y
+ * deja pulsar el de todo solo cuando hay algo que devolver.
+ */
+function showResets(): void {
+  const s = cur();
+  RESETS.forEach((r, i) => {
+    const btn = resetButtons[i];
+    if (btn) btn.hidden = !moved(r, s);
+  });
+  resetAllEl.disabled = !RESETS.some((r) => moved(r, s)) && !framed(s);
+}
+
+// Todo de una vez, para la pieza abierta: las medidas y el encuadre de sus
+// imagenes. No toca ni el texto, ni los archivos, ni donde este la mosca, que
+// no son tamaños y no se mueven sin querer.
+resetAllEl.addEventListener("click", () => {
+  const s = cur();
+  for (const r of RESETS) r.set(s, r.def(s));
+  resetFraming(s);
+  draw();
+});
 
 // --- Colores ----------------------------------------------------------------
 
@@ -1364,6 +1477,8 @@ function draw(): void {
   }
   parts.push(`ventana de ${layout.area.h} px`);
   previewInfoEl.textContent = parts.join(" · ");
+
+  showResets();
 
   context(s.thumb).drawImage(previewEl, 0, 0, s.thumb.width, s.thumb.height);
   miniCtx.drawImage(previewEl, 0, 0, miniCanvasEl.width, miniCanvasEl.height);

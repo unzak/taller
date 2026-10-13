@@ -63,7 +63,7 @@ el archivo en cualquier parte de la ventana o pegándolo del portapapeles
 ## Dos imágenes
 
 Como en News Maker: con una ya puesta, «Añadir nueva imagen» parte la ventana
-en dos, mitad y mitad, con una raya blanca en la junta. Cada una se encuadra por
+en dos, mitad y mitad, con una raya negra en la junta. Cada una se encuadra por
 su cuenta, y el zoom y el volteo le hablan a la última que se haya tocado.
 
 Una de las dos puede ser un vídeo, pero **solo una**: ffmpeg monta un vídeo con
@@ -88,6 +88,14 @@ con el aro **del color del resaltado**.
 - **Imagen o vídeo**: se arrastra para encuadrar; la rueda o el pellizco lo
   amplían por donde se apunta. Se voltea con el botón de la esquina.
 - **Cuerpo de letra**: con su barra, o con la rueda y el pellizco sobre el texto.
+
+Cada barra que se haya movido de su sitio enseña a su lado un **«↺ por
+defecto»** que la devuelve a su valor de partida, solo a ella. En la del tamaño
+de la imagen, además la recentra.
+
+Debajo de PORTADA / SLIDE hay un **«↺ TODO POR DEFECTO»** que devuelve de una
+vez todas las medidas y el encuadre de la pieza abierta. No toca el texto, los
+archivos ni la posición de la mosca.
 
 ## Vídeo
 

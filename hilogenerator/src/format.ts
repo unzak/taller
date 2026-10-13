@@ -141,8 +141,9 @@ export const ARROW = {
 };
 
 /**
- * La raya blanca que separa las dos imagenes cuando la pieza lleva dos. El
- * mismo grosor que en News Maker, que es de donde viene la idea.
+ * La raya que separa las dos imagenes cuando la pieza lleva dos. El mismo
+ * grosor que en News Maker, que es de donde viene la idea, pero en negro: aqui
+ * la junta tiene que fundirse con las bandas, no con unos filetes blancos.
  */
 export const DIVIDER_W = 3;
 

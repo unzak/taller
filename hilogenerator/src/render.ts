@@ -718,7 +718,7 @@ function drawPlate(
   // difuminado se la coma por los extremos en vez de cortarla en seco.
   if (opts.items.length > 1) {
     const { area } = layout;
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#000000";
     ctx.fillRect(Math.round((layout.width - DIVIDER_W) / 2), area.y, DIVIDER_W, area.h);
   }
 
