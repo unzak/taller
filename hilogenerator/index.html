@@ -48,6 +48,7 @@
         <button type="button" id="move-left" class="btn-secondary" title="Mover antes">←</button>
         <button type="button" id="move-right" class="btn-secondary" title="Mover después">→</button>
         <button type="button" id="remove" class="btn-secondary">Eliminar</button>
+        <button type="button" id="new-work" class="btn-secondary">Nuevo hilo</button>
       </div>
     </section>
 
@@ -290,6 +291,19 @@
         </p>
       </section>
     </main>
+
+    <!--
+      Los últimos hilos, guardados en el propio navegador. Lo rellena
+      `main.ts`; sin nada guardado, ni se ve.
+    -->
+    <section class="history" id="history" hidden>
+      <h2>Últimos hilos</h2>
+      <p class="muted small hint">
+        Se guardan solos mientras trabajas, en este navegador y solo en él: no
+        salen de tu equipo. Se conservan los 12 más recientes.
+      </p>
+      <div class="works" id="works"></div>
+    </section>
 
     <section class="output" id="output" hidden>
       <h2>Hilo generado</h2>

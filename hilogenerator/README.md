@@ -114,6 +114,23 @@ su descarga y un «Descargar todo». Los archivos salen numerados
 
 Los textos de todo el hilo se revisan con LanguageTool en una sola consulta.
 
+## Historial
+
+El hilo se guarda solo mientras se trabaja, en el propio navegador
+(IndexedDB): textos, medidas, encuadres y también las imágenes y los vídeos.
+Nada sale del equipo.
+
+- **Volver atrás o recargar** deja el hilo como estaba: la pestaña recuerda
+  cuál tenía abierto.
+- **Una visita nueva** empieza en blanco, con «Últimos hilos» debajo para abrir
+  cualquiera de los 12 más recientes o borrarlo.
+- **«Nuevo hilo»** empieza otro sin perder el que había, que se queda en la
+  lista.
+
+Lo que no se guarda son las piezas ya generadas: se vuelven a sacar con
+«GENERA EL HILO». Si el navegador no deja usar IndexedDB —algunas ventanas
+privadas—, la herramienta funciona igual, solo que sin historial.
+
 ## Archivos
 
 | Archivo | Qué hay dentro |
@@ -121,3 +138,4 @@ Los textos de todo el hilo se revisan con LanguageTool en una sola consulta.
 | `src/format.ts` | Lienzo, letras, cuerpos, márgenes y bandas. |
 | `src/render.ts` | Composición del texto, bandas, encuadre y dibujo. |
 | `src/main.ts` | El hilo, la tira de piezas, los gestos y la exportación. |
+| `src/store.ts` | El historial en IndexedDB: los hilos y sus archivos. |
