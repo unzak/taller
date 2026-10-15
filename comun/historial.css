@@ -1,0 +1,102 @@
+/*
+ * El historial del taller, comun a las cuatro herramientas. Va aparte de la
+ * piel porque no lo carga cualquier pagina: solo las que lo usan, a traves de
+ * `historial.ts`.
+ */
+
+/* La misma caja de papel que el resultado, debajo del taller. */
+.history {
+  max-width: 1180px;
+  margin: 24px auto 0;
+  padding: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.works {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.work {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.work.is-current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.work-open {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.work-open:disabled {
+  cursor: default;
+}
+
+.work-open img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  /* Cada herramienta tiene su formato: 4:5, 9:16 o lo que mida la banda. Se
+     ve entero, sobre negro, y las tarjetas no bailan de alto. */
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--ink);
+}
+
+.work-open strong {
+  font-size: 13px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.work-open:hover:not(:disabled) strong {
+  color: var(--accent);
+}
+
+.work-delete {
+  align-self: flex-start;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.work-now {
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.history-head h2 {
+  margin: 0;
+}
+
+.history-hint {
+  margin: 0 0 14px;
+}

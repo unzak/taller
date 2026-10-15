@@ -30,6 +30,7 @@ import {
   type RenderOptions,
   type VideoTransform,
 } from "./render.js";
+import { historial, newId, thumbnail } from "../../comun/historial.js";
 import { nav } from "../../comun/nav.js";
 import { applyFixes, check, type Issue } from "../../comun/spell.js";
 import "./style.css";
@@ -92,6 +93,7 @@ const miniEl = need<HTMLDivElement>("mini");
 const miniCanvasEl = need<HTMLCanvasElement>("mini-canvas");
 const miniCloseEl = need<HTMLButtonElement>("mini-close");
 const sourceEl = need<HTMLVideoElement>("source");
+const historyEl = need<HTMLElement>("history");
 
 function context(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const ctx = canvas.getContext("2d");
@@ -107,6 +109,8 @@ interface State {
   hasVideo: boolean;
   frameSize: { width: number; height: number } | null;
   file: File | null;
+  /** El id del archivo en el historial, que lo guarda una vez y lo cita por el. */
+  fileId: string;
   transform: VideoTransform;
   /** Espejado horizontal. No toca el encuadre, solo da la vuelta a la imagen. */
   flip: boolean;
@@ -130,6 +134,7 @@ const state: State = {
   hasVideo: false,
   frameSize: null,
   file: null,
+  fileId: "",
   transform: { zoom: 1, offsetX: 0, offsetY: 0 },
   flip: false,
   trim: { start: 0, end: 0 },
@@ -236,7 +241,7 @@ function once(el: HTMLVideoElement, type: string): Promise<void> {
   });
 }
 
-async function loadFile(file: File): Promise<void> {
+async function loadFile(file: File, id = newId()): Promise<void> {
   if (!file.type.startsWith("video/")) {
     setStatus("Ese archivo no es un vídeo.", "error");
     return;
@@ -260,6 +265,7 @@ async function loadFile(file: File): Promise<void> {
 
   state.hasVideo = true;
   state.file = file;
+  state.fileId = id;
   state.frameSize = { width: sourceEl.videoWidth, height: sourceEl.videoHeight };
   state.transform = { zoom: 1, offsetX: 0, offsetY: 0 };
   zoomEl.value = "1";
@@ -845,6 +851,9 @@ function draw(): void {
   previewInfoEl.textContent = `${layout.width} × ${layout.height} px · ${rotulo}${hueco}${cta}`;
   drawMini();
   updateMini();
+  // Reproduciendo, esto entra en cada fotograma: el historial solo rearma su
+  // temporizador, y no guarda hasta que la previa se queda quieta.
+  historico.schedule();
 }
 
 for (const el of [textEl, sizeEl, textColorEl, highlightEl, ctaEl, ctaSizeEl]) {
@@ -1074,6 +1083,129 @@ downloadEl.addEventListener("click", () => {
   a.click();
 });
 
+// --- Historial --------------------------------------------------------------
+
+/** Lo que se guarda de un video meme. El video, por su `fileId`. */
+interface WorkData {
+  text: string;
+  size: number;
+  bottom: number;
+  ctaOn: boolean;
+  cta: string;
+  ctaSize: number;
+  ctaPos: number;
+  colorText: string;
+  colorHighlight: string;
+  video: {
+    fileId: string;
+    transform: VideoTransform;
+    flip: boolean;
+    trim: { start: number; end: number };
+  } | null;
+}
+
+/** Deja el video meme en blanco, como recien abierto. */
+function clearAll(): void {
+  pausePreview();
+  const previous = sourceEl.src;
+  sourceEl.removeAttribute("src");
+  sourceEl.load();
+  if (previous) URL.revokeObjectURL(previous);
+  state.hasVideo = false;
+  state.frameSize = null;
+  state.file = null;
+  state.fileId = "";
+  state.transform = { zoom: 1, offsetX: 0, offsetY: 0 };
+  state.flip = false;
+  state.trim = { start: 0, end: 0 };
+  state.ctaPos = CTA_POS;
+  fileEl.value = "";
+  fileNameEl.textContent = "Ningún archivo seleccionado";
+  zoomEl.value = "1";
+  bottomEl.value = "0";
+  seekEl.value = "0";
+  seekEl.disabled = true;
+  textEl.value = "";
+  sizeEl.value = String(FONT_SIZE);
+  ctaSectionEl.open = false;
+  ctaEl.value = CTA_TEXT;
+  ctaSizeEl.value = String(CTA_FONT_SIZE);
+  textColorEl.value = COLOR_TEXT;
+  highlightEl.value = COLOR_HIGHLIGHT;
+  showFlip();
+  showTrim();
+  showPlay();
+  showTime();
+  outputEl.hidden = true;
+  setStatus("");
+  draw();
+}
+
+const historico = historial<WorkData>({
+  tool: "videomemegenerator",
+  host: historyEl,
+  heading: "Últimos vídeo memes",
+  freshLabel: "Nuevo vídeo meme",
+  snapshot: () => ({
+    data: {
+      text: textEl.value,
+      size: Number(sizeEl.value),
+      bottom: Number(bottomEl.value),
+      ctaOn: ctaSectionEl.open,
+      cta: ctaEl.value,
+      ctaSize: Number(ctaSizeEl.value),
+      ctaPos: state.ctaPos,
+      colorText: textColorEl.value,
+      colorHighlight: highlightEl.value,
+      video: state.file
+        ? {
+            fileId: state.fileId,
+            transform: { ...state.transform },
+            flip: state.flip,
+            trim: { ...state.trim },
+          }
+        : null,
+    },
+    files: state.file ? [{ id: state.fileId, file: state.file }] : [],
+    title: textEl.value.replace(/\*/g, "").replace(/\s+/g, " ").trim() || "Sin rótulo",
+    thumb: thumbnail(previewEl, 162),
+    empty: !state.file && textEl.value.trim() === "",
+  }),
+  restore: async (data, getFile) => {
+    clearAll();
+    // El rotulo va antes que el video: es el que pone el techo del hueco, y el
+    // encuadre guardado se recorta contra ese techo.
+    textEl.value = data.text;
+    sizeEl.value = String(data.size);
+    ctaSectionEl.open = data.ctaOn;
+    ctaEl.value = data.cta;
+    ctaSizeEl.value = String(data.ctaSize);
+    state.ctaPos = data.ctaPos;
+    textColorEl.value = data.colorText;
+    highlightEl.value = data.colorHighlight;
+    if (data.video) {
+      const file = await getFile(data.video.fileId);
+      if (file) {
+        await loadFile(file, data.video.fileId);
+        state.transform = { ...data.video.transform };
+        state.flip = data.video.flip;
+        state.trim = { ...data.video.trim };
+        zoomEl.value = String(state.transform.zoom);
+        showFlip();
+        showTrim();
+        if (state.trim.start > 0) seekTo(state.trim.start);
+      }
+    }
+    bottomEl.value = String(data.bottom);
+    setStatus("");
+    draw();
+  },
+  reset: clearAll,
+  describe: (data) => (data.video ? `${(data.video.trim.end - data.video.trim.start).toFixed(1)} s` : ""),
+  isBusy: () => state.busy,
+  onError: (message) => setStatus(message, "error"),
+});
+
 // --- Arranque ---------------------------------------------------------------
 
 textEl.value = "";
@@ -1094,4 +1226,5 @@ void (async () => {
   const [overlay] = await Promise.all([loadImage(overlayUrl), ensureFont()]);
   state.overlay = overlay;
   draw();
+  await historico.start();
 })();

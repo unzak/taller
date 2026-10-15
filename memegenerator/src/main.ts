@@ -18,6 +18,7 @@ import {
   type PhotoTransform,
   type RenderOptions,
 } from "./render.js";
+import { historial, newId, thumbnail } from "../../comun/historial.js";
 import { nav } from "../../comun/nav.js";
 import { applyFixes, check, type Issue } from "../../comun/spell.js";
 import "./style.css";
@@ -63,6 +64,7 @@ const previewPanelEl = need<HTMLElement>("preview-panel");
 const miniEl = need<HTMLDivElement>("mini");
 const miniCanvasEl = need<HTMLCanvasElement>("mini-canvas");
 const miniCloseEl = need<HTMLButtonElement>("mini-close");
+const historyEl = need<HTMLElement>("history");
 
 function context(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const ctx = canvas.getContext("2d");
@@ -78,6 +80,8 @@ interface State {
   photo: HTMLImageElement | null;
   photoSize: { width: number; height: number } | null;
   photoName: string;
+  /** El archivo original y su id: lo que el historial guarda para volver a el. */
+  photoFile: { id: string; file: File } | null;
   transform: PhotoTransform;
 }
 
@@ -85,6 +89,7 @@ const state: State = {
   photo: null,
   photoSize: null,
   photoName: "",
+  photoFile: null,
   transform: { zoom: 1, offsetX: 0, offsetY: 0 },
 };
 
@@ -159,7 +164,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function loadFile(file: File): Promise<void> {
+async function loadFile(file: File, id = newId()): Promise<void> {
   if (!file.type.startsWith("image/")) {
     setStatus("Ese archivo no es una imagen.", "error");
     return;
@@ -170,6 +175,7 @@ async function loadFile(file: File): Promise<void> {
     state.photo = img;
     state.photoSize = { width: img.naturalWidth, height: img.naturalHeight };
     state.photoName = file.name;
+    state.photoFile = { id, file };
     state.transform = { zoom: 1, offsetX: 0, offsetY: 0 };
     zoomEl.value = "1";
     fileNameEl.textContent = `${file.name} · ${img.naturalWidth} × ${img.naturalHeight}`;
@@ -418,6 +424,7 @@ function draw(): void {
   previewInfoEl.textContent = `${layout.width} × ${layout.height} px · ${band}`;
   drawMini();
   updateMini();
+  historico.schedule();
 }
 
 for (const el of [textEl, sizeEl, bandEl, textColorEl, highlightEl]) {
@@ -571,6 +578,87 @@ downloadEl.addEventListener("click", () => {
   }, "image/png");
 });
 
+// --- Historial -------------------------------------------------------------
+
+/** Lo que se guarda de un meme. La foto, por su `fileId`. */
+interface WorkData {
+  text: string;
+  align: string;
+  size: number;
+  colorBand: string;
+  colorText: string;
+  colorHighlight: string;
+  photo: { fileId: string; transform: PhotoTransform } | null;
+}
+
+/** Deja el meme en blanco, como recien abierto. */
+function clearAll(): void {
+  state.photo = null;
+  state.photoSize = null;
+  state.photoName = "";
+  state.photoFile = null;
+  state.transform = { zoom: 1, offsetX: 0, offsetY: 0 };
+  fileEl.value = "";
+  fileNameEl.textContent = "Ningún archivo seleccionado";
+  zoomEl.value = "1";
+  textEl.value = "";
+  alignEl.value = "center";
+  sizeEl.value = String(FONT_SIZE);
+  bandEl.value = COLOR_BAND;
+  textColorEl.value = COLOR_TEXT;
+  highlightEl.value = COLOR_HIGHLIGHT;
+  outputEl.hidden = true;
+  setStatus("");
+  draw();
+}
+
+const historico = historial<WorkData>({
+  tool: "memegenerator",
+  host: historyEl,
+  heading: "Últimos memes",
+  freshLabel: "Nuevo meme",
+  snapshot: () => ({
+    data: {
+      text: textEl.value,
+      align: alignEl.value,
+      size: Number(sizeEl.value),
+      colorBand: bandEl.value,
+      colorText: textColorEl.value,
+      colorHighlight: highlightEl.value,
+      photo: state.photoFile
+        ? { fileId: state.photoFile.id, transform: { ...state.transform } }
+        : null,
+    },
+    files: state.photoFile ? [state.photoFile] : [],
+    title: textEl.value.replace(/\*/g, "").replace(/\s+/g, " ").trim() || "Sin texto",
+    thumb: thumbnail(previewEl),
+    empty: !state.photo && textEl.value.trim() === "",
+  }),
+  restore: async (data, getFile) => {
+    clearAll();
+    // El texto va antes que la foto: la banda que ocupa decide el hueco de la
+    // foto, y el encuadre guardado se recorta contra ese hueco.
+    textEl.value = data.text;
+    alignEl.value = data.align;
+    sizeEl.value = String(data.size);
+    bandEl.value = data.colorBand;
+    textColorEl.value = data.colorText;
+    highlightEl.value = data.colorHighlight;
+    if (data.photo) {
+      const file = await getFile(data.photo.fileId);
+      if (file) {
+        await loadFile(file, data.photo.fileId);
+        state.transform = { ...data.photo.transform };
+        zoomEl.value = String(state.transform.zoom);
+      }
+    }
+    setStatus("");
+    draw();
+  },
+  reset: clearAll,
+  onError: (message) => setStatus(message, "error"),
+});
+
 // --- Arranque --------------------------------------------------------------
 
 textEl.value = "";
@@ -579,4 +667,7 @@ previewEl.width = CANVAS_W;
 bandEl.value = COLOR_BAND;
 textColorEl.value = COLOR_TEXT;
 highlightEl.value = COLOR_HIGHLIGHT;
-void ensureFont().then(draw);
+void ensureFont().then(async () => {
+  draw();
+  await historico.start();
+});

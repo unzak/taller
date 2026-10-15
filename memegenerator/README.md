@@ -151,3 +151,11 @@ dónde acaba una foto clara sobre la banda blanca.
 - **Medir la referencia.** Lo que hizo que news-maker saliera clavado fue medir
   el PSD en vez de estimar. Aquí los márgenes y el cuerpo son de diseño, así que
   si aparece una referencia hay que volver a medir sobre ella.
+
+## Historial
+
+Lo que se está haciendo se guarda solo, en el propio navegador, con sus
+archivos: volver atrás o recargar lo recupera tal cual, y debajo de la
+herramienta quedan los 10 últimos trabajos para abrirlos o borrarlos. Una
+visita nueva empieza en blanco. Nada sale del equipo; es el historial común del
+taller, en `../comun/historial.ts`.

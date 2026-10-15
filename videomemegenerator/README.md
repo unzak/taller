@@ -408,3 +408,11 @@ a propósito (`--ink`): la imagen se juzga sobre negro de estudio, no sobre rosa
   clavado sobre su PSD.
 - [memegenerator](../memegenerator/README.md) — la banda con el texto arriba y la foto
   debajo, sin plantilla fija.
+
+## Historial
+
+Lo que se está haciendo se guarda solo, en el propio navegador, con sus
+archivos: volver atrás o recargar lo recupera tal cual, y debajo de la
+herramienta quedan los 10 últimos trabajos para abrirlos o borrarlos. Una
+visita nueva empieza en blanco. Nada sale del equipo; es el historial común del
+taller, en `../comun/historial.ts`.

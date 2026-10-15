@@ -9,6 +9,8 @@ import ruleGlowUrl from "./assets/rule-glow.png";
 import {
   CANVAS_H,
   CANVAS_W,
+  COLOR_BASE,
+  COLOR_HIGHLIGHT,
   FONT_FAMILY,
   FONT_WEIGHT,
   INSET_DEFAULT_CX,
@@ -33,6 +35,7 @@ import {
   type Inset,
   type Photo,
 } from "./render.js";
+import { historial, newId, thumbnail, type SavedFile } from "../../comun/historial.js";
 import { nav } from "../../comun/nav.js";
 import { applyFixes, check, type Issue } from "../../comun/spell.js";
 import "./style.css";
@@ -89,6 +92,7 @@ const previewPanelEl = need<HTMLElement>("preview-panel");
 const miniEl = need<HTMLDivElement>("mini");
 const miniCanvasEl = need<HTMLCanvasElement>("mini-canvas");
 const miniCloseEl = need<HTMLButtonElement>("mini-close");
+const historyEl = need<HTMLElement>("history");
 
 const previewCtx = previewEl.getContext("2d");
 const resultCtx = resultEl.getContext("2d", { willReadFrequently: false });
@@ -104,6 +108,14 @@ let overlay: HTMLImageElement | null = null;
 let ruleGlow: HTMLImageElement | null = null;
 let ruleCore: HTMLImageElement | null = null;
 let inset: Inset | null = null;
+
+/**
+ * Los archivos de las fotos, en el mismo orden que `photos`, y el de la mosca.
+ * Las fotos solo guardan la imagen ya cargada; el historial necesita ademas el
+ * archivo original para poder volver a montarla.
+ */
+const photoFiles: SavedFile[] = [];
+let insetFile: SavedFile | null = null;
 
 /**
  * Que se manipula al actuar sobre la mosca: la mosca misma o su contenido.
@@ -166,6 +178,7 @@ function draw(): void {
   });
   drawMini();
   updateMini();
+  historico.schedule();
 }
 
 /* ---------- vista previa flotante (movil) ---------- */
@@ -232,7 +245,7 @@ function setPhoto2UI(visible: boolean): void {
  * Al cambiar el numero de fotos cambia el ancho del hueco, asi que el encuadre
  * de la que ya estaba vuelve al punto de partida en vez de quedarse torcido.
  */
-async function useFile(file: File, slot: 0 | 1): Promise<void> {
+async function useFile(file: File, slot: 0 | 1, id = newId()): Promise<void> {
   if (!file.type.startsWith("image/")) {
     setStatus("Ese archivo no es una imagen.", "error");
     return;
@@ -246,6 +259,7 @@ async function useFile(file: File, slot: 0 | 1): Promise<void> {
       size: { width: img.naturalWidth, height: img.naturalHeight },
       transform: { zoom: 1, offsetX: 0, offsetY: 0 },
     };
+    photoFiles[slot] = { id, file };
     const nameEl = slot === 0 ? fileNameEl : file2NameEl;
     nameEl.textContent = `${file.name} · ${img.naturalWidth}×${img.naturalHeight}`;
     if (slot === 1) setPhoto2UI(true);
@@ -284,6 +298,7 @@ file2El.addEventListener("change", () => {
 
 photo2RemoveEl.addEventListener("click", () => {
   photos.length = Math.min(photos.length, 1);
+  photoFiles.length = Math.min(photoFiles.length, 1);
   // Vuelve a mandar una sola foto en todo el ancho: su encuadre ya no vale.
   const sola = photos[0];
   if (sola) sola.transform = { zoom: 1, offsetX: 0, offsetY: 0 };
@@ -560,7 +575,7 @@ function setInsetUI(visible: boolean): void {
   ringColorFieldEl.hidden = !visible;
 }
 
-async function useInsetFile(file: File): Promise<void> {
+async function useInsetFile(file: File, id = newId()): Promise<void> {
   if (!file.type.startsWith("image/")) {
     setStatus("Ese archivo no es una imagen.", "error");
     return;
@@ -580,6 +595,7 @@ async function useInsetFile(file: File): Promise<void> {
       offsetX: 0,
       offsetY: 0,
     };
+    insetFile = { id, file };
     insetSizeEl.value = String(inset.radius);
     insetZoomEl.value = "1";
     setInsetUI(true);
@@ -641,6 +657,7 @@ for (const b of document.querySelectorAll<HTMLButtonElement>(".mode")) {
 
 insetRemoveEl.addEventListener("click", () => {
   inset = null;
+  insetFile = null;
   setInsetUI(false);
   fileInsetEl.value = "";
   fileInsetNameEl.textContent = "Sin mosca";
@@ -818,6 +835,129 @@ downloadEl.addEventListener("click", () => {
   }, "image/png");
 });
 
+/* ---------- historial ---------- */
+
+/** Lo que se guarda de una noticia. Los archivos, por su `fileId`. */
+interface WorkData {
+  text: string;
+  vertical: VerticalId;
+  colorBase: string;
+  colorHighlight: string;
+  colorRing: string;
+  photos: { fileId: string; transform: Photo["transform"] }[];
+  inset: {
+    fileId: string;
+    cx: number;
+    cy: number;
+    radius: number;
+    zoom: number;
+    offsetX: number;
+    offsetY: number;
+  } | null;
+}
+
+/** Deja la noticia en blanco, como recien abierta. */
+function clearAll(): void {
+  photos.length = 0;
+  photoFiles.length = 0;
+  fileEl.value = "";
+  file2El.value = "";
+  fileNameEl.textContent = "Ningún archivo seleccionado";
+  file2NameEl.textContent = "Sin segunda imagen";
+  setPhoto2UI(false);
+  zoomEl.value = "1";
+  zoom2El.value = "1";
+  // El boton de quitar la mosca ya sabe dejar su interfaz como al principio.
+  insetRemoveEl.click();
+  textEl.value = "";
+  verticalEl.value = VERTICALS[0].id;
+  baseEl.value = COLOR_BASE;
+  highEl.value = COLOR_HIGHLIGHT;
+  ringEl.value = COLOR_HIGHLIGHT;
+  markSwatches();
+  outputEl.hidden = true;
+  setStatus("Añade una imagen y un titular.");
+  draw();
+}
+
+const historico = historial<WorkData>({
+  tool: "news-maker",
+  host: historyEl,
+  heading: "Últimas noticias",
+  freshLabel: "Nueva noticia",
+  snapshot: () => ({
+    data: {
+      text: textEl.value,
+      vertical: currentVertical(),
+      colorBase: baseEl.value,
+      colorHighlight: highEl.value,
+      colorRing: ringEl.value,
+      photos: photos.map((ph, i) => ({
+        fileId: photoFiles[i]?.id ?? "",
+        transform: { ...ph.transform },
+      })),
+      inset:
+        inset && insetFile
+          ? {
+              fileId: insetFile.id,
+              cx: inset.cx,
+              cy: inset.cy,
+              radius: inset.radius,
+              zoom: inset.zoom,
+              offsetX: inset.offsetX,
+              offsetY: inset.offsetY,
+            }
+          : null,
+    },
+    files: [...photoFiles, ...(insetFile ? [insetFile] : [])],
+    title: textEl.value.replace(/\*/g, "").replace(/\s+/g, " ").trim() || "Sin titular",
+    thumb: thumbnail(previewEl),
+    empty: photos.length === 0 && !inset && textEl.value.trim() === "",
+  }),
+  restore: async (data, getFile) => {
+    clearAll();
+    // Primero las fotos y luego los encuadres: cargar la segunda reinicia el
+    // de la primera, porque cambia el ancho de su hueco.
+    const framed: { slot: number; transform: Photo["transform"] }[] = [];
+    for (const saved of data.photos) {
+      const file = await getFile(saved.fileId);
+      if (!file) continue;
+      const slot = photos.length === 0 ? 0 : 1;
+      await useFile(file, slot, saved.fileId);
+      framed.push({ slot, transform: saved.transform });
+    }
+    for (const { slot, transform } of framed) {
+      const ph = photos[slot];
+      if (ph) ph.transform = { ...transform };
+    }
+    zoomEl.value = String(photos[0]?.transform.zoom ?? 1);
+    zoom2El.value = String(photos[1]?.transform.zoom ?? 1);
+    if (data.inset) {
+      const file = await getFile(data.inset.fileId);
+      if (file) {
+        await useInsetFile(file, data.inset.fileId);
+        if (inset) {
+          const { fileId: _, ...pos } = data.inset;
+          Object.assign(inset, pos);
+          insetSizeEl.value = String(Math.round(inset.radius));
+          insetZoomEl.value = String(inset.zoom);
+        }
+      }
+    }
+    textEl.value = data.text;
+    verticalEl.value = data.vertical;
+    baseEl.value = data.colorBase;
+    highEl.value = data.colorHighlight;
+    ringEl.value = data.colorRing;
+    markSwatches();
+    setStatus("");
+    draw();
+  },
+  reset: clearAll,
+  describe: (data) => VERTICALS.find((v) => v.id === data.vertical)?.label ?? "",
+  onError: (message) => setStatus(message, "error"),
+});
+
 /* ---------- arranque ---------- */
 
 async function boot(): Promise<void> {
@@ -843,6 +983,7 @@ async function boot(): Promise<void> {
     setStatus("No se pudo cargar Poppins; se usará una fuente de respaldo.", "error");
   }
   draw();
+  await historico.start();
 }
 
 void boot();

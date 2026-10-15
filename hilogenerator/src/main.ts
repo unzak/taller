@@ -34,18 +34,7 @@ import {
   type MediaTransform,
   type RenderOptions,
 } from "./render.js";
-import {
-  available,
-  deleteWorks,
-  getFile,
-  listWorks,
-  prune,
-  putFile,
-  putWork,
-  type SavedSlide,
-  type Work,
-  type WorkData,
-} from "./store.js";
+import { historial, newId, type SavedFile } from "../../comun/historial.js";
 import { nav } from "../../comun/nav.js";
 import { applyFixes, check, type Issue } from "../../comun/spell.js";
 import "./style.css";
@@ -143,7 +132,6 @@ const miniCanvasEl = need<HTMLCanvasElement>("mini-canvas");
 const miniCloseEl = need<HTMLButtonElement>("mini-close");
 const newWorkEl = need<HTMLButtonElement>("new-work");
 const historyEl = need<HTMLElement>("history");
-const worksEl = need<HTMLDivElement>("works");
 
 function context(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const ctx = canvas.getContext("2d");
@@ -167,16 +155,6 @@ type Media =
 interface Size {
   width: number;
   height: number;
-}
-
-/**
- * El id de un archivo cargado. Es con lo que el historial lo guarda una sola
- * vez y lo reconoce despues, por muchas veces que se guarde su hilo.
- */
-function newId(): string {
-  return typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
 /** Una imagen o un video de la pieza, con su encuadre y su volteo. */
@@ -1491,7 +1469,7 @@ function paintThumb(s: Slide): void {
   context(s.thumb).drawImage(canvas, 0, 0, s.thumb.width, s.thumb.height);
   // Solo se pinta la miniatura de una pieza que no esta abierta cuando algo
   // suyo ha cambiado, y eso tambien hay que guardarlo.
-  scheduleSave();
+  historico.schedule();
 }
 
 function draw(): void {
@@ -1539,7 +1517,7 @@ function draw(): void {
   previewInfoEl.textContent = parts.join(" · ");
 
   showResets();
-  scheduleSave();
+  historico.schedule();
 
   context(s.thumb).drawImage(previewEl, 0, 0, s.thumb.width, s.thumb.height);
   miniCtx.drawImage(previewEl, 0, 0, miniCanvasEl.width, miniCanvasEl.height);
@@ -1873,45 +1851,40 @@ fixEl.addEventListener("click", () => {
 
 // --- Historial --------------------------------------------------------------
 
-/** Cuantos hilos se conservan. El mas antiguo se va al guardar el siguiente. */
-const MAX_WORKS = 12;
-
-/** Lo que tarda en guardarse un cambio: lo justo para no escribir a cada letra. */
-const SAVE_DELAY = 900;
-
-/** Donde la pestaña apunta que hilo tiene abierto, para volver a el. */
-const SESSION_KEY = "hilogenerator:abierto";
-
-/** IndexedDB disponible. Sin ella no hay historial, pero si herramienta. */
-let storeReady = false;
-/** Mientras se abre un hilo guardado, lo que se pinta no es un cambio. */
-let restoring = false;
-/** El id con el que se guarda el hilo abierto. null hasta el primer guardado. */
-let workId: string | null = null;
-/** Lo ultimo que se guardo, para no reescribir lo que no ha cambiado. */
-let lastSaved = "";
-/** Archivos que ya estan en la base: se escriben una vez y no mas. */
-const stored = new Set<string>();
-let saveTimer = 0;
-/** Las escrituras van en fila: un guardado y un borrado no se pisan. */
-let queue: Promise<void> = Promise.resolve();
-let warned = false;
-
-function sessionId(): string | null {
-  try {
-    return sessionStorage.getItem(SESSION_KEY);
-  } catch {
-    return null;
-  }
+/** Lo que se guarda de cada pieza del hilo. Los archivos, por su `fileId`. */
+interface SavedSlide {
+  kind: Kind;
+  text: string;
+  size: number;
+  topOn: boolean;
+  topText: string;
+  topSize: number;
+  marginBottom: number;
+  marginTop: number;
+  marginSide: number;
+  bandPad: number;
+  bigScale: number;
+  arrow: boolean;
+  active: number;
+  trim: { start: number; end: number };
+  items: { fileId: string; transform: MediaTransform; flip: boolean }[];
+  inset: {
+    on: boolean;
+    fileId: string | null;
+    cx: number;
+    cy: number;
+    radius: number;
+    zoom: number;
+    offsetX: number;
+    offsetY: number;
+  };
 }
 
-function setSessionId(id: string | null): void {
-  try {
-    if (id) sessionStorage.setItem(SESSION_KEY, id);
-    else sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    // Sin sessionStorage no se vuelve solo al hilo, pero sigue en el historial.
-  }
+/** Un hilo guardado: sus piezas y los dos colores, que son de todo el hilo. */
+interface WorkData {
+  colorText: string;
+  colorHighlight: string;
+  slides: SavedSlide[];
 }
 
 /** True si el hilo no tiene todavia nada que merezca guardarse. */
@@ -1959,7 +1932,7 @@ function saved(s: Slide): SavedSlide {
   };
 }
 
-function snapshot(): WorkData {
+function workData(): WorkData {
   return {
     colorText: textColorEl.value,
     colorHighlight: highlightEl.value,
@@ -1976,65 +1949,6 @@ function workTitle(): string {
   return "Sin texto";
 }
 
-function enqueue(job: () => Promise<void>): Promise<void> {
-  queue = queue.then(job).catch((err: unknown) => {
-    console.error(err);
-    if (warned) return;
-    warned = true;
-    setStatus(
-      "No se pudo guardar en el historial: puede que el navegador se haya quedado sin sitio.",
-      "error",
-    );
-  });
-  return queue;
-}
-
-/** Guarda el hilo abierto, si ha cambiado. Los archivos nuevos, primero. */
-function saveNow(): Promise<void> {
-  clearTimeout(saveTimer);
-  if (!storeReady || restoring) return queue;
-  return enqueue(async () => {
-    if (isEmpty()) return;
-    const data = snapshot();
-    const json = JSON.stringify(data);
-    if (json === lastSaved) return;
-
-    for (const s of slides) {
-      for (const m of [...s.items.map((it) => it.media), s.inset.media]) {
-        if (!m || stored.has(m.id)) continue;
-        await putFile(m.id, m.file);
-        stored.add(m.id);
-      }
-    }
-
-    workId ??= newId();
-    setSessionId(workId);
-    await putWork({
-      ...data,
-      id: workId,
-      updated: Date.now(),
-      title: workTitle(),
-      thumb: slides[0]?.thumb.toDataURL("image/jpeg", 0.75) ?? "",
-    });
-    lastSaved = json;
-    await prune(MAX_WORKS);
-    await showHistory();
-  });
-}
-
-function scheduleSave(): void {
-  if (!storeReady || restoring) return;
-  clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(() => void saveNow(), SAVE_DELAY);
-}
-
-// Al irse de la pagina —atras, cerrar, cambiar de pestaña— se guarda ya, sin
-// esperar al retardo: es justo el momento en que se perderia lo ultimo.
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") void saveNow();
-});
-window.addEventListener("pagehide", () => void saveNow());
-
 /** Cambia el hilo abierto por otro: suelta lo cargado y pone las piezas nuevas. */
 function replaceSlides(next: Slide[]): void {
   pausePreview();
@@ -2048,7 +1962,10 @@ function replaceSlides(next: Slide[]): void {
 }
 
 /** Vuelve a montar una pieza guardada, con sus archivos sacados de la base. */
-async function revive(d: SavedSlide): Promise<Slide> {
+async function revive(
+  d: SavedSlide,
+  getFile: (id: string) => Promise<File | null>,
+): Promise<Slide> {
   const s = newSlide(d.kind);
   s.text = d.text;
   s.size = d.size;
@@ -2066,7 +1983,6 @@ async function revive(d: SavedSlide): Promise<Slide> {
   const load = async (fileId: string): Promise<Media | null> => {
     const file = await getFile(fileId);
     if (!file) return null;
-    stored.add(fileId);
     try {
       return await (file.type.startsWith("video/") ? openVideo(file, fileId) : openImage(file, fileId));
     } catch {
@@ -2094,98 +2010,54 @@ async function revive(d: SavedSlide): Promise<Slide> {
   return s;
 }
 
-async function openWork(work: Work): Promise<void> {
-  if (busy) return;
-  // Lo que hay abierto se guarda antes de cambiarlo por otro.
-  await saveNow();
-  restoring = true;
-  try {
+/**
+ * El historial, el comun del taller. Aqui solo se le dice que es un hilo: como
+ * se fotografia, como se vuelve a montar y como se deja en blanco.
+ */
+const historico = historial<WorkData>({
+  tool: "hilogenerator",
+  host: historyEl,
+  heading: "Últimos hilos",
+  freshLabel: "Nuevo hilo",
+  snapshot: () => {
+    const files: SavedFile[] = [];
+    for (const s of slides) {
+      for (const m of [...s.items.map((it) => it.media), s.inset.media]) {
+        if (m) files.push({ id: m.id, file: m.file });
+      }
+    }
+    return {
+      data: workData(),
+      files,
+      title: workTitle(),
+      thumb: slides[0]?.thumb.toDataURL("image/jpeg", 0.75) ?? "",
+      empty: isEmpty(),
+    };
+  },
+  restore: async (data, getFile) => {
     const next: Slide[] = [];
-    for (const d of work.slides) next.push(await revive(d));
-    textColorEl.value = work.colorText;
-    highlightEl.value = work.colorHighlight;
+    for (const d of data.slides) next.push(await revive(d, getFile));
+    textColorEl.value = data.colorText;
+    highlightEl.value = data.colorHighlight;
     replaceSlides(next);
-    workId = work.id;
-    setSessionId(work.id);
-    // Lo abierto es lo guardado: abrir un hilo viejo no lo sube arriba del
-    // historial hasta que de verdad se toque algo.
-    lastSaved = JSON.stringify(snapshot());
-  } finally {
-    restoring = false;
-  }
-  setStatus("");
-  await showHistory();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-newWorkEl.addEventListener("click", () => {
-  if (busy) return;
-  void (async () => {
-    // El que habia se queda en el historial tal como estaba.
-    await saveNow();
-    restoring = true;
+    setStatus("");
+  },
+  reset: () => {
     textColorEl.value = COLOR_TEXT;
     highlightEl.value = COLOR_HIGHLIGHT;
     replaceSlides([newSlide("portada")]);
-    workId = null;
-    lastSaved = "";
-    setSessionId(null);
-    restoring = false;
     setStatus("");
-    await showHistory();
-  })();
+  },
+  describe: (data) => {
+    const n = data.slides.length;
+    return `${n} ${n === 1 ? "pieza" : "piezas"}`;
+  },
+  isBusy: () => busy,
+  onError: (message) => setStatus(message, "error"),
 });
 
-async function showHistory(): Promise<void> {
-  if (!storeReady) return;
-  const works = await listWorks();
-  historyEl.hidden = works.length === 0;
-
-  const cards = works.map((w) => {
-    const open = w.id === workId;
-    const card = document.createElement("div");
-    card.className = open ? "work is-current" : "work";
-
-    const go = document.createElement("button");
-    go.type = "button";
-    go.className = "work-open";
-    go.disabled = open;
-    const img = document.createElement("img");
-    img.src = w.thumb;
-    img.alt = "";
-    const title = document.createElement("strong");
-    title.textContent = w.title;
-    const meta = document.createElement("span");
-    meta.className = "muted small";
-    const n = w.slides.length;
-    const when = new Date(w.updated).toLocaleString("es-ES", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    meta.textContent = `${n} ${n === 1 ? "pieza" : "piezas"} · ${when}`;
-    go.append(img, title, meta);
-    go.addEventListener("click", () => void openWork(w));
-
-    const side = document.createElement(open ? "span" : "button");
-    side.className = open ? "work-now small" : "btn-secondary work-delete";
-    side.textContent = open ? "Abierto ahora" : "Borrar";
-    if (side instanceof HTMLButtonElement) {
-      side.type = "button";
-      side.addEventListener("click", () => {
-        void enqueue(async () => {
-          await deleteWorks([w.id]);
-          await showHistory();
-        });
-      });
-    }
-
-    card.append(go, side);
-    return card;
-  });
-  worksEl.replaceChildren(...cards);
-}
+// El de la tira hace lo mismo que el de la lista: a mano esta en los dos sitios.
+newWorkEl.addEventListener("click", () => void historico.fresh());
 
 // --- Arranque ---------------------------------------------------------------
 
@@ -2218,13 +2090,5 @@ void (async () => {
   await ensureFonts();
   draw();
 
-  storeReady = await available();
-  if (!storeReady) return;
-  // Volver atras o recargar es seguir donde se estaba: la pestaña recuerda que
-  // hilo tenia abierto. Una visita nueva empieza en blanco, con el historial
-  // debajo para recuperar cualquiera de los anteriores.
-  const open = (await listWorks()).find((w) => w.id === sessionId());
-  if (open && isEmpty()) await openWork(open);
-  else await showHistory();
-  scheduleSave();
+  await historico.start();
 })();

@@ -172,3 +172,11 @@ cargan las tres, y lo propio de esta va en su `src/style.css`, así que
 el PNG que se descarga no se entera de nada. La cama del lienzo sigue siendo
 oscura a propósito (`--ink`): la foto se juzga sobre negro de estudio, no sobre
 rosa.
+
+## Historial
+
+Lo que se está haciendo se guarda solo, en el propio navegador, con sus
+archivos: volver atrás o recargar lo recupera tal cual, y debajo de la
+herramienta quedan los 10 últimos trabajos para abrirlos o borrarlos. Una
+visita nueva empieza en blanco. Nada sale del equipo; es el historial común del
+taller, en `../comun/historial.ts`.

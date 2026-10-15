@@ -36,6 +36,7 @@ claros. Son tres proyectos que comparten piel, no una librería con tres pieles.
 | --- | --- |
 | `comun/piel.css` | Lo que era **byte a byte igual** en las tres hojas: la paleta del panel Pulso Viral, la barra de herramientas, la cabecera, los paneles, los campos y el cuadro de la revisión. |
 | `comun/nav.ts` | La lista de herramientas y el menú que las enlaza. Añadir otra es tocar `TOOLS` y nada más: así entró el hilo. |
+| `comun/historial.ts` · `historial.css` | El historial: cada herramienta guarda sola lo que se está haciendo, en el propio navegador (IndexedDB), con sus imágenes y vídeos. Volver atrás o recargar lo recupera, y debajo de cada una quedan los 10 últimos trabajos para abrirlos o borrarlos. Nada sale del equipo. |
 | `comun/encode.ts` | El motor de vídeo, ffmpeg en WebAssembly. Lo usan el vídeo meme y el hilo, cada uno con su lienzo. |
 | `comun/spell.ts` | La consulta a LanguageTool, que estaba idéntica en los tres repositorios. |
 | `comun/portada.ts` · `portada.css` · `favicon.svg` | La portada del taller, que es lo que hay en la raíz del sitio. |
