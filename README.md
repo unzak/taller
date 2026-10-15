@@ -9,7 +9,7 @@ El **Taller Cabronazi**: las cuatro herramientas de la casa en un repositorio.
 - [**videomemegenerator**](videomemegenerator/README.md) — la plantilla del PSD
   sobre un vídeo vertical, montado en MP4 en el propio navegador.
 - [**hilogenerator**](hilogenerator/README.md) — el carrusel entero: una portada
-  y sus slides, cada una con su imagen o su vídeo, a 1080 × 1350.
+  y sus slides, cada una con su imagen o su vídeo, a 1080 × 1440.
 
 **Todo ocurre en el navegador.** No hay servidor y no hay nada que instalar para
 usarlas: la página publicada funciona sola, y nada de lo que se suelta ahí sale

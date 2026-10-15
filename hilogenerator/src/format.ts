@@ -8,15 +8,13 @@
  */
 
 /**
- * Lienzo: 1080x1350, el 4:5 del feed, igual que News Maker.
- *
- * Las referencias miden 1080x1440 (3:4), 90 px mas de alto. Todo lo que se
- * midio sobre ellas se cuenta desde el filo de abajo o es un tamaño, asi que
- * vale tal cual: el texto, sus margenes y la banda quedan identicos, y los 90
- * px salen de la ventana de la imagen.
+ * Lienzo: 1080x1440, el 3:4 del carrusel, que es lo que miden las dos
+ * referencias. Paso una temporada en 4:5 (1080x1350); como todo lo medido se
+ * cuenta desde el filo de abajo o es un tamaño, el cambio solo mueve la
+ * ventana de la imagen, que gana esos 90 px.
  */
 export const CANVAS_W = 1080;
-export const CANVAS_H = 1350;
+export const CANVAS_H = 1440;
 
 export interface Font {
   /** Nombre a secas de la familia, para comprobar si esta cargada. */

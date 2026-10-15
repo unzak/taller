@@ -1,14 +1,12 @@
 # hilogenerator
 
 El **Hilo Generator**: el carrusel entero en una sola página. Una portada y las
-slides que hagan falta, cada una con su imagen o su vídeo, a **1080 × 1350**
-(4:5).
+slides que hagan falta, cada una con su imagen o su vídeo, a **1080 × 1440**
+(3:4).
 
 No hay PSD detrás. Las medidas salen de las dos piezas de referencia —la portada
 «Otro año con polémicas…» y la slide «Un fallo impide completar…»— y están
-todas en `src/format.ts`. Las referencias son 3:4 (1080 × 1440); el texto, los
-márgenes y la banda se conservan tal cual y los 90 px de diferencia salen de la
-ventana de la imagen.
+todas en `src/format.ts`, al mismo 3:4 (1080 × 1440) que ellas.
 
 ## Portada y slide
 

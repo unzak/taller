@@ -200,7 +200,7 @@ interface Slide {
 function newSlide(kind: Kind): Slide {
   const thumb = document.createElement("canvas");
   thumb.width = 108;
-  thumb.height = 135;
+  thumb.height = 144;
   return {
     kind,
     text: "",
