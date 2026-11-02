@@ -26,6 +26,14 @@ export interface Font {
 
 export type Kind = "portada" | "slide";
 
+/**
+ * El aspecto del hilo entero. NEW es el de ahora: el texto sobre la imagen,
+ * con su banda negra y su difuminado. CLASSIC es el de antes: una banda
+ * blanca arriba con el texto en negro, como el Meme Generator, y la imagen
+ * debajo.
+ */
+export type Look = "new" | "classic";
+
 /** Lo que distingue a una portada de una slide. */
 export interface Style {
   font: Font;
@@ -52,6 +60,22 @@ export interface Style {
   bandPad: number;
   /** La portada puede acabar en la flecha que invita a pasar a la siguiente. */
   arrow: boolean;
+  /** Margen superior de partida: del filo a la cabeza de la primera linea. */
+  marginTop: number;
+  /** Margen lateral de partida, que fija el ancho de composicion. */
+  marginSide: number;
+  /**
+   * `overlay`: el texto va sobre la imagen, con banda y difuminado. `band`: el
+   * texto va en una banda lisa arriba y la imagen ocupa lo que queda debajo.
+   */
+  layout: "overlay" | "band";
+  /** Color de las bandas y de lo que no tape la imagen. */
+  background: string;
+  /** La junta entre dos imagenes. */
+  divider: { width: number; color: string };
+  /** Los dos colores de partida del texto. */
+  colorText: string;
+  colorHighlight: string;
 }
 
 /**
@@ -81,6 +105,15 @@ export const STYLES: Record<Kind, Style> = {
     marginBottom: 100,
     bandPad: 40,
     arrow: true,
+    marginTop: 120,
+    marginSide: 55,
+    layout: "overlay",
+    background: "#000000",
+    // El grosor de la junta de News Maker, de donde viene la idea, pero en
+    // negro: aqui tiene que fundirse con las bandas.
+    divider: { width: 3, color: "#000000" },
+    colorText: "#ffffff",
+    colorHighlight: "#ffff00",
   },
   slide: {
     font: { family: "Poppins", stack: '"Poppins", system-ui, sans-serif', weight: 700 },
@@ -95,8 +128,56 @@ export const STYLES: Record<Kind, Style> = {
     marginBottom: 155,
     bandPad: 124,
     arrow: false,
+    marginTop: 120,
+    marginSide: 55,
+    layout: "overlay",
+    background: "#000000",
+    divider: { width: 3, color: "#000000" },
+    colorText: "#ffffff",
+    colorHighlight: "#ffff00",
   },
 };
+
+/**
+ * CLASSIC, medido sobre la referencia «Se cumplen 25 años del 11S…»: SF Pro
+ * Display Medium, la del Meme Generator, en negro y centrada sobre blanco.
+ * Las tres lineas miden 628, 718 y 646 px de tinta, que salen a 79 px de
+ * cuerpo con un tracking de -0,043 em; baselines cada 95 px, la primera
+ * mayuscula a 99 px del filo, y la imagen empieza en y = 438. Con 176 px de
+ * margen lateral el texto se parte solo por donde se parte alli.
+ *
+ * Portada y slide son iguales: en la referencia la portada se distingue por
+ * llevar escrita su flecha («-->») al final del texto.
+ */
+export const CLASSIC: Style = {
+  font: { family: "SF Pro Display", stack: '"SF Pro Display", system-ui, sans-serif', weight: 500 },
+  upper: false,
+  align: "center",
+  size: 79,
+  sizeMin: 30,
+  sizeMax: 140,
+  gapEm: 0.5,
+  trackingEm: -0.043,
+  fade: 0,
+  marginBottom: 100,
+  bandPad: 78,
+  arrow: false,
+  marginTop: 99,
+  marginSide: 176,
+  layout: "band",
+  background: "#ffffff",
+  divider: { width: 11, color: "#ffffff" },
+  colorText: "#000000",
+  colorHighlight: "#e11d2f",
+};
+
+/** El estilo de una pieza: lo deciden el aspecto del hilo y su tipo. */
+export function styleFor(look: Look, kind: Kind): Style {
+  return look === "classic" ? CLASSIC : STYLES[kind];
+}
+
+/** Todas las letras que puede pedir el hilo, para cargarlas antes de medir. */
+export const FONTS: Font[] = [STYLES.portada.font, STYLES.slide.font, CLASSIC.font];
 
 /**
  * Lo que crece lo +destacado+ respecto al resto. Es cosa aparte del
@@ -108,12 +189,9 @@ export const BIG_SCALE_MIN = 1;
 export const BIG_SCALE_MAX = 2.4;
 
 /**
- * Margenes de partida que no dependen del tipo. El superior va del filo a la
- * cabeza de la primera linea; el lateral es el de la slide, que arranca en
- * x = 55.
+ * Topes de los margenes. Los de partida van en cada estilo: en NEW el superior
+ * es 120 y el lateral 55, el de la slide, que arranca en x = 55.
  */
-export const MARGIN_TOP = 120;
-export const MARGIN_SIDE = 55;
 export const MARGIN_MIN = 30;
 export const MARGIN_MAX = 760;
 export const MARGIN_SIDE_MAX = 260;
@@ -139,13 +217,6 @@ export const ARROW = {
 };
 
 /**
- * La raya que separa las dos imagenes cuando la pieza lleva dos. El mismo
- * grosor que en News Maker, que es de donde viene la idea, pero en negro: aqui
- * la junta tiene que fundirse con las bandas, no con unos filetes blancos.
- */
-export const DIVIDER_W = 3;
-
-/**
  * La mosca: un aro del color del resaltado, con o sin imagen dentro. Sin
  * imagen es el circulo que señala algo de la foto, como el de la portada de
  * referencia; con imagen es la mosca de News Maker.
@@ -167,8 +238,7 @@ export const INSET = {
 /** Lo que nunca se estrecha la ventana de la imagen, crezca lo que crezca el texto. */
 export const MEDIA_MIN_H = 320;
 
-export const COLOR_TEXT = "#ffffff";
-/** El amarillo del resaltado, medido sobre las dos referencias. */
+/** El amarillo del resaltado de NEW, medido sobre las dos referencias. */
 export const COLOR_HIGHLIGHT = "#ffff00";
 
 export const ZOOM_MIN = 1;
@@ -181,6 +251,8 @@ export interface Swatch {
 
 export const COLORS: Swatch[] = [
   { label: "Blanco", hex: "#ffffff" },
+  { label: "Negro", hex: "#000000" },
+  { label: "Rojo classic", hex: "#e11d2f" },
   { label: "Amarillo hilo", hex: COLOR_HIGHLIGHT },
   { label: "Amarillo News Maker", hex: "#ffde00" },
   { label: "Rosa Cabronazi", hex: "#cc1c65" },

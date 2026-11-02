@@ -8,7 +8,28 @@ No hay PSD detrás. Las medidas salen de las dos piezas de referencia —la port
 «Otro año con polémicas…» y la slide «Un fallo impide completar…»— y están
 todas en `src/format.ts`, al mismo 3:4 (1080 × 1440) que ellas.
 
-## Portada y slide
+## NEW y CLASSIC
+
+Encima de PORTADA / SLIDE se elige el aspecto, que vale **para todo el hilo**:
+
+- **NEW** es lo de abajo: el texto sobre la imagen, con su banda negra y su
+  difuminado.
+- **CLASSIC** es lo de antes: una banda blanca arriba con el texto en negro,
+  centrado, en SF Pro Display Medium (la del Meme Generator), y la imagen
+  debajo, sin difuminado. Con dos imágenes, la junta es blanca, de 11 px. Las
+  medidas salen de la referencia «Se cumplen 25 años del 11S…»: 79 px de
+  cuerpo, la primera línea a 99 px del filo y la imagen empezando en y = 438.
+
+En CLASSIC hay un solo texto, el de arriba, con las mismas marcas
+(`*resaltado*` en rojo de partida, `+destacado+` más grande) y la misma barra de
+tamaño. Portada y slide salen iguales: la flecha se escribe en el texto
+(«-->»). Los márgenes que cuentan son el superior, el lateral y el blanco entre
+el texto y la imagen.
+
+Cambiar de aspecto devuelve las medidas y los colores de todas las piezas a los
+de partida del nuevo; el texto, los archivos y los encuadres se quedan.
+
+## Portada y slide (NEW)
 
 | | Portada | Slide |
 | --- | --- | --- |

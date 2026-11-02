@@ -2,8 +2,6 @@ import { encode } from "../../comun/encode.js";
 import {
   CANVAS_H,
   CANVAS_W,
-  COLOR_HIGHLIGHT,
-  COLOR_TEXT,
   COLORS,
   BAND_PAD_MAX,
   BAND_PAD_MIN,
@@ -13,13 +11,14 @@ import {
   INSET,
   MARGIN_MAX,
   MARGIN_MIN,
-  MARGIN_SIDE,
   MARGIN_SIDE_MAX,
-  MARGIN_TOP,
-  STYLES,
+  FONTS,
+  styleFor,
   ZOOM_MAX,
   ZOOM_MIN,
   type Kind,
+  type Look,
+  type Style,
 } from "./format.js";
 import {
   clampInsetOffset,
@@ -56,6 +55,16 @@ const kindEls: Record<Kind, HTMLButtonElement> = {
   slide: need<HTMLButtonElement>("kind-slide"),
 };
 const kindHintEl = need<HTMLParagraphElement>("kind-hint");
+const lookEls: Record<Look, HTMLButtonElement> = {
+  new: need<HTMLButtonElement>("look-new"),
+  classic: need<HTMLButtonElement>("look-classic"),
+};
+const textNameEl = need<HTMLSpanElement>("text-name");
+const bandPadNameEl = need<HTMLSpanElement>("band-pad-name");
+const bandPadNoteEl = need<HTMLSpanElement>("band-pad-note");
+const marginTopFieldEl = need<HTMLDivElement>("margin-top-field");
+const marginBottomFieldEl = need<HTMLDivElement>("margin-bottom-field");
+const marginsTitleEl = need<HTMLHeadingElement>("margins-title");
 const resetAllEl = need<HTMLButtonElement>("reset-all");
 const arrowFieldEl = need<HTMLLabelElement>("arrow-field");
 const arrowEl = need<HTMLInputElement>("arrow");
@@ -197,6 +206,27 @@ interface Slide {
   thumb: HTMLCanvasElement;
 }
 
+/**
+ * NEW o CLASSIC. Es del hilo entero, no de cada pieza: un carrusel no mezcla
+ * los dos aspectos, y asi los colores, que tambien son del hilo, casan.
+ */
+let look: Look = "new";
+
+function styleOf(s: Slide): Style {
+  return styleFor(look, s.kind);
+}
+
+/** Las medidas de partida de una pieza, segun su tipo y el aspecto del hilo. */
+function applyDefaults(s: Slide): void {
+  const style = styleOf(s);
+  s.size = style.size;
+  s.topSize = style.size;
+  s.marginBottom = style.marginBottom;
+  s.marginTop = style.marginTop;
+  s.marginSide = style.marginSide;
+  s.bandPad = style.bandPad;
+}
+
 function newSlide(kind: Kind): Slide {
   const thumb = document.createElement("canvas");
   thumb.width = 108;
@@ -204,14 +234,14 @@ function newSlide(kind: Kind): Slide {
   return {
     kind,
     text: "",
-    size: STYLES[kind].size,
+    size: styleFor(look, kind).size,
     topOn: false,
     topText: "",
-    topSize: STYLES[kind].size,
-    marginBottom: STYLES[kind].marginBottom,
-    marginTop: MARGIN_TOP,
-    marginSide: MARGIN_SIDE,
-    bandPad: STYLES[kind].bandPad,
+    topSize: styleFor(look, kind).size,
+    marginBottom: styleFor(look, kind).marginBottom,
+    marginTop: styleFor(look, kind).marginTop,
+    marginSide: styleFor(look, kind).marginSide,
+    bandPad: styleFor(look, kind).bandPad,
     bigScale: BIG_SCALE,
     arrow: true,
     items: [],
@@ -262,6 +292,7 @@ function video(): HTMLVideoElement | null {
 
 function options(s: Slide, placeholder: boolean): RenderOptions {
   return {
+    look,
     kind: s.kind,
     items: s.items.map((it) => ({
       source: it.media.el,
@@ -297,9 +328,7 @@ function setStatus(message: string, kind: "" | "error" = ""): void {
 async function ensureFonts(): Promise<void> {
   try {
     await Promise.all(
-      Object.values(STYLES).map((st) =>
-        document.fonts.load(`${st.font.weight} 64px "${st.font.family}"`),
-      ),
+      FONTS.map((font) => document.fonts.load(`${font.weight} 64px "${font.family}"`)),
     );
     await document.fonts.ready;
   } catch {
@@ -370,15 +399,30 @@ removeEl.addEventListener("click", () => {
 /** Pasa la pieza abierta a los controles. Lo contrario lo hacen sus `input`. */
 function showSlide(): void {
   const s = cur();
-  const style = STYLES[s.kind];
+  const style = styleOf(s);
 
   for (const kind of ["portada", "slide"] as const) {
     kindEls[kind].setAttribute("aria-checked", String(s.kind === kind));
   }
-  kindHintEl.textContent =
-    s.kind === "portada"
+  for (const l of ["new", "classic"] as const) {
+    lookEls[l].setAttribute("aria-checked", String(look === l));
+  }
+  const classic = look === "classic";
+  kindHintEl.textContent = classic
+    ? "Banda blanca arriba con el texto en negro y la imagen debajo. Vale para todo el hilo."
+    : s.kind === "portada"
       ? "Todo en mayúsculas, centrado, y con la flecha al pie."
       : "Tal cual se escriba, alineado a la izquierda.";
+
+  // CLASSIC tiene un solo texto, arriba: sin texto superior aparte ni margen
+  // inferior, y el margen superior pasa a los margenes, que es donde se busca.
+  textNameEl.textContent = classic ? "Texto" : "Texto inferior";
+  topSectionEl.hidden = classic;
+  marginBottomFieldEl.hidden = classic;
+  if (classic) marginsTitleEl.after(marginTopFieldEl);
+  else topSectionEl.append(marginTopFieldEl);
+  bandPadNameEl.textContent = classic ? "Blanco bajo el texto" : "Negro sobre el texto";
+  bandPadNoteEl.textContent = classic ? "hasta la imagen" : "antes del difuminado";
 
   for (const el of [sizeEl, topSizeEl]) {
     el.min = String(style.sizeMin);
@@ -388,7 +432,7 @@ function showSlide(): void {
   topTextEl.value = s.topText;
   topSectionEl.open = s.topOn;
 
-  arrowFieldEl.hidden = !STYLES[s.kind].arrow;
+  arrowFieldEl.hidden = !style.arrow;
   arrowEl.checked = s.arrow;
 
   showFiles();
@@ -400,6 +444,24 @@ function showSlide(): void {
   showTime();
 }
 
+for (const l of ["new", "classic"] as const) {
+  lookEls[l].addEventListener("click", () => {
+    if (look === l) return;
+    look = l;
+    // Cambia la letra y la banda de todas las piezas: sus medidas vuelven a
+    // las de partida del aspecto nuevo, y los colores tambien. El texto, los
+    // archivos y los encuadres se quedan.
+    for (const s of slides) applyDefaults(s);
+    const style = styleFor(look, "portada");
+    textColorEl.value = style.colorText;
+    highlightEl.value = style.colorHighlight;
+    pausePreview();
+    for (const s of slides) if (s !== cur()) paintThumb(s);
+    showSlide();
+    draw();
+  });
+}
+
 for (const kind of ["portada", "slide"] as const) {
   kindEls[kind].addEventListener("click", () => {
     const s = cur();
@@ -407,10 +469,10 @@ for (const kind of ["portada", "slide"] as const) {
     s.kind = kind;
     // Cada tipo tiene su letra y su banda: las medidas de la una no valen
     // para la otra.
-    s.size = STYLES[kind].size;
-    s.topSize = STYLES[kind].size;
-    s.marginBottom = STYLES[kind].marginBottom;
-    s.bandPad = STYLES[kind].bandPad;
+    s.size = styleFor(look, kind).size;
+    s.topSize = styleFor(look, kind).size;
+    s.marginBottom = styleFor(look, kind).marginBottom;
+    s.bandPad = styleFor(look, kind).bandPad;
     showStrip();
     showSlide();
     draw();
@@ -481,26 +543,36 @@ interface Reset {
 }
 
 const RESETS: Reset[] = [
-  { input: sizeEl, get: (s) => s.size, def: (s) => STYLES[s.kind].size, set: (s, v) => (s.size = v) },
+  { input: sizeEl, get: (s) => s.size, def: (s) => styleOf(s).size, set: (s, v) => (s.size = v) },
   { input: hlEl, get: (s) => s.bigScale, def: () => BIG_SCALE, set: (s, v) => (s.bigScale = v) },
   {
     input: topSizeEl,
     get: (s) => s.topSize,
-    def: (s) => STYLES[s.kind].size,
+    def: (s) => styleOf(s).size,
     set: (s, v) => (s.topSize = v),
   },
-  { input: marginTopEl, get: (s) => s.marginTop, def: () => MARGIN_TOP, set: (s, v) => (s.marginTop = v) },
+  {
+    input: marginTopEl,
+    get: (s) => s.marginTop,
+    def: (s) => styleOf(s).marginTop,
+    set: (s, v) => (s.marginTop = v),
+  },
   {
     input: marginBottomEl,
     get: (s) => s.marginBottom,
-    def: (s) => STYLES[s.kind].marginBottom,
+    def: (s) => styleOf(s).marginBottom,
     set: (s, v) => (s.marginBottom = v),
   },
-  { input: marginSideEl, get: (s) => s.marginSide, def: () => MARGIN_SIDE, set: (s, v) => (s.marginSide = v) },
+  {
+    input: marginSideEl,
+    get: (s) => s.marginSide,
+    def: (s) => styleOf(s).marginSide,
+    set: (s, v) => (s.marginSide = v),
+  },
   {
     input: bandPadEl,
     get: (s) => s.bandPad,
-    def: (s) => STYLES[s.kind].bandPad,
+    def: (s) => styleOf(s).bandPad,
     set: (s, v) => (s.bandPad = v),
   },
   {
@@ -1267,15 +1339,20 @@ function targetAt(clientX: number, clientY: number): Target | null {
   return "media";
 }
 
+/** En CLASSIC el bloque de arriba es el texto de siempre, no el superior. */
+function isTopText(target: TextTarget): boolean {
+  return target === "top" && styleOf(cur()).layout === "overlay";
+}
+
 function sizeOf(target: TextTarget): number {
-  return target === "top" ? cur().topSize : cur().size;
+  return isTopText(target) ? cur().topSize : cur().size;
 }
 
 function setSize(target: TextTarget, size: number): void {
   const s = cur();
-  const style = STYLES[s.kind];
+  const style = styleOf(s);
   const next = Math.round(clamp(size, style.sizeMin, style.sizeMax) * 2) / 2;
-  if (target === "top") s.topSize = next;
+  if (isTopText(target)) s.topSize = next;
   else s.size = next;
   draw();
 }
@@ -1882,6 +1959,8 @@ interface SavedSlide {
 
 /** Un hilo guardado: sus piezas y los dos colores, que son de todo el hilo. */
 interface WorkData {
+  /** Los hilos de antes de CLASSIC no lo traen: son NEW. */
+  look?: Look;
   colorText: string;
   colorHighlight: string;
   slides: SavedSlide[];
@@ -1934,6 +2013,7 @@ function saved(s: Slide): SavedSlide {
 
 function workData(): WorkData {
   return {
+    look,
     colorText: textColorEl.value,
     colorHighlight: highlightEl.value,
     slides: slides.map(saved),
@@ -2035,6 +2115,8 @@ const historico = historial<WorkData>({
     };
   },
   restore: async (data, getFile) => {
+    // Antes de montar las piezas: sus medidas de partida dependen del aspecto.
+    look = data.look ?? "new";
     const next: Slide[] = [];
     for (const d of data.slides) next.push(await revive(d, getFile));
     textColorEl.value = data.colorText;
@@ -2043,8 +2125,9 @@ const historico = historial<WorkData>({
     setStatus("");
   },
   reset: () => {
-    textColorEl.value = COLOR_TEXT;
-    highlightEl.value = COLOR_HIGHLIGHT;
+    // Un hilo nuevo sigue en el aspecto que se estaba usando.
+    textColorEl.value = styleFor(look, "portada").colorText;
+    highlightEl.value = styleFor(look, "portada").colorHighlight;
     replaceSlides([newSlide("portada")]);
     setStatus("");
   },
@@ -2063,8 +2146,8 @@ newWorkEl.addEventListener("click", () => void historico.fresh());
 
 previewEl.width = CANVAS_W;
 previewEl.height = CANVAS_H;
-textColorEl.value = COLOR_TEXT;
-highlightEl.value = COLOR_HIGHLIGHT;
+textColorEl.value = styleFor(look, "portada").colorText;
+highlightEl.value = styleFor(look, "portada").colorHighlight;
 hlEl.min = String(BIG_SCALE_MIN);
 hlEl.max = String(BIG_SCALE_MAX);
 bandPadEl.min = String(BAND_PAD_MIN);

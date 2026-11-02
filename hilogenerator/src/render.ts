@@ -1,12 +1,12 @@
 import {
   ARROW,
-  DIVIDER_W,
   INSET,
   CANVAS_H,
   CANVAS_W,
   MEDIA_MIN_H,
-  STYLES,
+  styleFor,
   type Kind,
+  type Look,
   type Style,
 } from "./format.js";
 
@@ -69,14 +69,19 @@ export interface Inset {
 }
 
 export interface RenderOptions {
+  /** NEW o CLASSIC: lo decide el hilo entero. */
+  look: Look;
   kind: Kind;
   /** Una ocupa toda la ventana; dos se la reparten mitad y mitad. */
   items: MediaItem[];
   /** La mosca, o null si no hay. Su aro va del color del resaltado. */
   inset: Inset | null;
-  /** El texto de abajo, que es el de siempre. Vacio es no ponerlo. */
+  /**
+   * El texto de siempre. Vacio es no ponerlo. En NEW va abajo; en CLASSIC va
+   * arriba, en su banda blanca.
+   */
   bottom: TextSpec;
-  /** El de arriba, opcional. `null` es que no hay. */
+  /** El de arriba, opcional. `null` es que no hay. CLASSIC no lo usa. */
   top: TextSpec | null;
   /** Del filo de abajo a la baseline de la ultima linea. */
   marginBottom: number;
@@ -384,12 +389,18 @@ function mediaScale(size: { width: number; height: number }, zoom: number, area:
  * que darle el rectangulo del video exactamente igual que en la previa.
  */
 export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions): Layout {
-  const style = STYLES[opts.kind];
+  const style = styleFor(opts.look, opts.kind);
   const { desc } = ratio(ctx, style);
   const maxWidth = CANVAS_W - opts.marginSide * 2;
 
-  const hasBottom = opts.bottom.text.trim().length > 0;
-  const hasTop = opts.top !== null && opts.top.text.trim().length > 0;
+  // En CLASSIC el texto de siempre sube a la banda de arriba y abajo no hay
+  // nada: la imagen llega al filo. Lo demas se calcula igual.
+  const band = style.layout === "band";
+  const topSpec = band ? opts.bottom : opts.top;
+  const bottomSpec = band ? null : opts.bottom;
+
+  const hasBottom = bottomSpec !== null && bottomSpec.text.trim().length > 0;
+  const hasTop = topSpec !== null && topSpec.text.trim().length > 0;
 
   // Lo que le queda a cada bloque: el lienzo menos la ventana minima y menos
   // lo que ya se llevan los margenes. Con los dos textos, a medias.
@@ -402,15 +413,15 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
 
   let top: Block | null = null;
   let bandTop = 0;
-  if (hasTop && opts.top) {
-    const f = fit(ctx, style, opts.top, opts.bigScale, maxWidth, maxHeight);
+  if (hasTop && topSpec) {
+    const f = fit(ctx, style, topSpec, opts.bigScale, maxWidth, maxHeight);
     if (f.composed.lines.length > 0) {
       const y = opts.marginTop;
       top = {
         lines: f.composed.lines,
         baselines: f.composed.baselines.map((b) => y + b),
         size: f.size,
-        shrunk: f.size < opts.top.size - 0.01,
+        shrunk: f.size < topSpec.size - 0.01,
         top: y,
         bottom: y + f.composed.height,
       };
@@ -422,15 +433,15 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
 
   let bottom: Block | null = null;
   let bandBottom = CANVAS_H;
-  if (hasBottom) {
-    const f = fit(ctx, style, opts.bottom, opts.bigScale, maxWidth, maxHeight);
+  if (hasBottom && bottomSpec) {
+    const f = fit(ctx, style, bottomSpec, opts.bigScale, maxWidth, maxHeight);
     if (f.composed.lines.length > 0) {
       const y = CANVAS_H - opts.marginBottom - f.composed.height;
       bottom = {
         lines: f.composed.lines,
         baselines: f.composed.baselines.map((b) => y + b),
         size: f.size,
-        shrunk: f.size < opts.bottom.size - 0.01,
+        shrunk: f.size < bottomSpec.size - 0.01,
         top: y,
         bottom: y + f.composed.height,
       };
@@ -534,7 +545,7 @@ function drawItems(
     ctx.rect(col.x, col.y, col.w, col.h);
     ctx.clip();
     if (plate) {
-      ctx.fillStyle = "#000000";
+      ctx.fillStyle = styleFor(opts.look, opts.kind).background;
       ctx.fillRect(col.x, col.y, col.w, col.h);
     }
     ctx.imageSmoothingEnabled = true;
@@ -647,7 +658,7 @@ export function render(ctx: CanvasRenderingContext2D, opts: RenderOptions): Layo
   const layout = computeLayout(ctx, opts);
   prepare(ctx, layout);
 
-  ctx.fillStyle = "#000000";
+  ctx.fillStyle = styleFor(opts.look, opts.kind).background;
   ctx.fillRect(0, 0, layout.width, layout.height);
 
   if (opts.items.length > 0) {
@@ -710,7 +721,7 @@ function drawPlate(
   layout: Layout,
   withImages: boolean,
 ): void {
-  const style = STYLES[opts.kind];
+  const style = styleFor(opts.look, opts.kind);
 
   // En la capa de ffmpeg las imagenes fijas van aqui: debajo solo corre el
   // video, y lo que este se salga de su mitad lo tapa la imagen de al lado.
@@ -720,20 +731,22 @@ function drawPlate(
   // difuminado se la coma por los extremos en vez de cortarla en seco.
   if (opts.items.length > 1) {
     const { area } = layout;
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(Math.round((layout.width - DIVIDER_W) / 2), area.y, DIVIDER_W, area.h);
+    const { width, color } = style.divider;
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round((layout.width - width) / 2), area.y, width, area.h);
   }
 
   if (opts.inset) drawInset(ctx, opts.inset, layout.area, opts.colorHighlight);
 
+  // CLASSIC no tiene difuminado: la banda corta en seco contra la imagen.
   if (layout.top) {
-    ctx.fillStyle = "#000000";
+    ctx.fillStyle = style.background;
     ctx.fillRect(0, 0, layout.width, layout.bandTop);
-    fade(ctx, layout.bandTop + style.fade, layout.bandTop);
+    if (style.fade > 0) fade(ctx, layout.bandTop + style.fade, layout.bandTop);
   }
   if (layout.bottom) {
-    fade(ctx, layout.bandBottom - style.fade, layout.bandBottom);
-    ctx.fillStyle = "#000000";
+    if (style.fade > 0) fade(ctx, layout.bandBottom - style.fade, layout.bandBottom);
+    ctx.fillStyle = style.background;
     ctx.fillRect(0, layout.bandBottom, layout.width, layout.height - layout.bandBottom);
   }
 

@@ -55,6 +55,11 @@
     <main class="layout">
       <section class="panel">
         <h2>1 · Tipo</h2>
+        <!-- El aspecto vale para todo el hilo; portada o slide, para cada pieza. -->
+        <div class="seg" role="radiogroup" aria-label="Aspecto del hilo">
+          <button type="button" class="seg-btn" id="look-new" role="radio">NEW</button>
+          <button type="button" class="seg-btn" id="look-classic" role="radio">CLASSIC</button>
+        </div>
         <div class="seg" role="radiogroup" aria-label="Tipo de pieza">
           <button type="button" class="seg-btn" id="kind-portada" role="radio">PORTADA</button>
           <button type="button" class="seg-btn" id="kind-slide" role="radio">SLIDE</button>
@@ -72,7 +77,7 @@
         <h2>2 · Texto</h2>
         <div class="field">
           <label for="text">
-            Texto inferior
+            <span id="text-name">Texto inferior</span>
             <span class="muted small">· *resaltado* cambia el color · +destacado+ lo agranda</span>
           </label>
           <textarea id="text" rows="3" placeholder="Escribe aquí el texto"></textarea>
@@ -111,7 +116,7 @@
             </label>
             <input type="range" id="top-size" step="0.5" />
           </div>
-          <div class="field">
+          <div class="field" id="margin-top-field">
             <label for="margin-top">
               Margen superior
               <span class="muted small">· <span id="margin-top-value"></span> px</span>
@@ -120,8 +125,8 @@
           </div>
         </details>
 
-        <h2>3 · Márgenes</h2>
-        <div class="field">
+        <h2 id="margins-title">3 · Márgenes</h2>
+        <div class="field" id="margin-bottom-field">
           <label for="margin-bottom">
             Margen inferior
             <span class="muted small">· <span id="margin-bottom-value"></span> px</span>
@@ -138,8 +143,8 @@
 
         <div class="field">
           <label for="band-pad">
-            Negro sobre el texto
-            <span class="muted small">· <span id="band-pad-value"></span> px antes del difuminado</span>
+            <span id="band-pad-name">Negro sobre el texto</span>
+            <span class="muted small">· <span id="band-pad-value"></span> px <span id="band-pad-note">antes del difuminado</span></span>
           </label>
           <input type="range" id="band-pad" min="0" max="320" step="1" />
         </div>

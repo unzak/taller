@@ -7,6 +7,18 @@
  */
 @import "../../comun/piel.css";
 
+/*
+ * SF Pro Display Medium, la letra del aspecto CLASSIC. Es el mismo woff2 del
+ * Meme Generator: reducido a Latin, 54 KB.
+ */
+@font-face {
+  font-family: "SF Pro Display";
+  src: url("./assets/sf-pro-display-medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 h2 {
   margin: 0 0 12px;
   font-size: 13px;
@@ -728,6 +740,11 @@ input[type="range"]:disabled {
 
 .seg + .hint {
   margin: 8px 0 10px;
+}
+
+/* NEW / CLASSIC encima de PORTADA / SLIDE. */
+.seg + .seg {
+  margin-top: 8px;
 }
 
 /* La casilla de la flecha, con su texto al lado y no debajo. */
