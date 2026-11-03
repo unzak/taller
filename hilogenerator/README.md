@@ -8,7 +8,7 @@ No hay PSD detrás. Las medidas salen de las dos piezas de referencia —la port
 «Otro año con polémicas…» y la slide «Un fallo impide completar…»— y están
 todas en `src/format.ts`, al mismo 3:4 (1080 × 1440) que ellas.
 
-## NEW y CLASSIC
+## NEW, CLASSIC y TIKTOK
 
 Encima de PORTADA / SLIDE se elige el aspecto, que vale **para todo el hilo**:
 
@@ -26,8 +26,40 @@ tamaño. Portada y slide salen iguales: la flecha se escribe en el texto
 («-->»). Los márgenes que cuentan son el superior, el lateral y el blanco entre
 el texto y la imagen.
 
+**TIKTOK** es el rótulo de TikTok: la imagen ocupa toda la pieza y el texto va
+suelto encima, centrado, en TikTok Sans (la letra de la app), a 72 px de partida
+como en la referencia «un random VARIOS días cualquiera:». El texto **se coge y
+se arrastra a cualquier sitio** de la vista previa, sin salirse del lienzo; la
+rueda o el pellizco sobre él cambian su tamaño. En cada pieza hay dos casillas:
+
+- **Trazo**: borde negro alrededor de la letra. Los emojis no lo llevan.
+- **Fondo**: una caja redondeada detrás de cada línea, del color del texto, y
+  la letra pasa a negro o blanco, la que se lea mejor (como en la app).
+
+Las marcas `*resaltado*` y `+destacado+` funcionan igual. El margen lateral
+decide hasta dónde llega cada línea antes de partirse. «↺ TODO POR DEFECTO»
+devuelve también el texto a su sitio.
+
 Cambiar de aspecto devuelve las medidas y los colores de todas las piezas a los
 de partida del nuevo; el texto, los archivos y los encuadres se quedan.
+
+## Alineación
+
+Debajo del texto, **CENTRADO / IZQUIERDA**, en cada pieza y en los tres
+aspectos. Arranca en lo de siempre: centrado, salvo la slide de NEW, que va a
+la izquierda. Cambiar de tipo o de aspecto lo devuelve a ese valor.
+
+- En **NEW**, a la izquierda es pegado al margen lateral.
+- En **CLASSIC** y **TIKTOK** el bloque sigue en su sitio y las líneas se
+  alinean entre sí por la izquierda, tomando como referencia la más larga.
+
+## Emojis
+
+En los tres aspectos los emojis se pintan con **Noto Color Emoji**, la de
+Google: a color y iguales en cualquier equipo (sin ella, Windows los pinta
+planos). Los de Apple, que son los que se ven en las redes desde un iPhone, no
+se pueden usar: su licencia no permite servirlos. El navegador descarga solo el
+trozo de la fuente con los emojis que se usan, la primera vez que aparecen.
 
 ## Portada y slide (NEW)
 
@@ -35,7 +67,7 @@ de partida del nuevo; el texto, los archivos y los encuadres se quedan.
 | --- | --- | --- |
 | Letra | Anton | Poppins Bold |
 | Caja | todo en mayúsculas | tal cual se escriba |
-| Alineación | centrada | a la izquierda |
+| Alineación de partida | centrada | a la izquierda |
 | Cuerpo de partida | 101 px | 64 px |
 | Al pie | la flecha rosa (casilla «Flecha» para quitarla) | nada |
 

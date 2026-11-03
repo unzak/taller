@@ -4,6 +4,8 @@ import {
   CANVAS_H,
   CANVAS_W,
   MEDIA_MIN_H,
+  TIKTOK_BOX,
+  TIKTOK_STROKE,
   styleFor,
   type Kind,
   type Look,
@@ -98,6 +100,14 @@ export interface RenderOptions {
   colorHighlight: string;
   /** En la previa, la ventana vacia se pinta con un aviso. En la pieza, no. */
   placeholder: boolean;
+  /** TIKTOK: el centro del texto, que va suelto sobre la imagen. */
+  pos: { x: number; y: number };
+  /** TIKTOK: trazo negro alrededor de la letra. */
+  stroke: boolean;
+  /** TIKTOK: caja redondeada detras de cada linea. */
+  box: boolean;
+  /** Centrado o a la izquierda. Arranca en lo que pide cada estilo. */
+  align: "center" | "left";
 }
 
 const MARKS = { "*": "highlight", "+": "big" } as const;
@@ -290,6 +300,8 @@ export interface Block {
   top: number;
   /** Baseline de la ultima. */
   bottom: number;
+  /** Centro de las lineas. Sin el, el del lienzo. */
+  cx?: number;
 }
 
 interface Fitted {
@@ -371,6 +383,9 @@ export interface Layout {
   columns: Rect[];
   /** Donde se pinta cada imagen o video, una por hueco. */
   media: Rect[];
+  /** TIKTOK: el texto suelto, y la caja por la que se coge para moverlo. */
+  free: Block | null;
+  freeBox: Rect | null;
 }
 
 /** Hueco de la imagen `i` de `n` dentro de la ventana. Con dos, media y media. */
@@ -392,6 +407,8 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
   const style = styleFor(opts.look, opts.kind);
   const { desc } = ratio(ctx, style);
   const maxWidth = CANVAS_W - opts.marginSide * 2;
+
+  if (style.layout === "free") return freeLayout(ctx, opts, style, desc, maxWidth);
 
   // En CLASSIC el texto de siempre sube a la banda de arriba y abajo no hay
   // nada: la imagen llega al filo. Lo demas se calcula igual.
@@ -451,6 +468,74 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
 
   const area: Rect = { x: 0, y: bandTop, w: CANVAS_W, h: bandBottom - bandTop };
 
+  return {
+    width: CANVAS_W,
+    height: CANVAS_H,
+    top,
+    bottom,
+    bandTop,
+    bandBottom,
+    area,
+    ...place(opts, area),
+    free: null,
+    freeBox: null,
+  };
+}
+
+/**
+ * TIKTOK: la imagen ocupa todo el lienzo y el texto va suelto encima,
+ * centrado alrededor de `pos`. No hay bandas.
+ */
+function freeLayout(
+  ctx: CanvasRenderingContext2D,
+  opts: RenderOptions,
+  style: Style,
+  desc: number,
+  maxWidth: number,
+): Layout {
+  const area: Rect = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H };
+  let free: Block | null = null;
+  let freeBox: Rect | null = null;
+  if (opts.bottom.text.trim().length > 0) {
+    const f = fit(ctx, style, opts.bottom, opts.bigScale, maxWidth, CANVAS_H - 120);
+    const c = f.composed;
+    if (c.lines.length > 0) {
+      const y = opts.pos.y - c.height / 2;
+      free = {
+        lines: c.lines,
+        baselines: c.baselines.map((b) => y + b),
+        size: f.size,
+        shrunk: f.size < opts.bottom.size - 0.01,
+        top: y,
+        bottom: y + c.height,
+        cx: opts.pos.x,
+      };
+      const padX = TIKTOK_BOX.padX * f.size;
+      const padY = TIKTOK_BOX.padY * f.size;
+      freeBox = {
+        x: opts.pos.x - c.widest / 2 - padX,
+        y: y - padY,
+        w: c.widest + padX * 2,
+        h: c.height + desc * f.size + padY * 2,
+      };
+    }
+  }
+  return {
+    width: CANVAS_W,
+    height: CANVAS_H,
+    top: null,
+    bottom: null,
+    bandTop: 0,
+    bandBottom: CANVAS_H,
+    area,
+    ...place(opts, area),
+    free,
+    freeBox,
+  };
+}
+
+/** El hueco de cada imagen dentro de la ventana, y donde se pinta. */
+function place(opts: RenderOptions, area: Rect): { columns: Rect[]; media: Rect[] } {
   // Los rectangulos se redondean aqui, y no al dibujar, porque el del video
   // va a parar a ffmpeg: si la previa y la pieza redondean distinto, no cuadran.
   const columns = opts.items.map((_, i) => column(area, i, opts.items.length));
@@ -466,18 +551,7 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
       h,
     };
   });
-
-  return {
-    width: CANVAS_W,
-    height: CANVAS_H,
-    top,
-    bottom,
-    bandTop,
-    bandBottom,
-    area,
-    columns,
-    media,
-  };
+  return { columns, media };
 }
 
 /**
@@ -753,6 +827,7 @@ function drawPlate(
   for (const block of [layout.top, layout.bottom]) {
     if (block) drawBlock(ctx, opts, style, block);
   }
+  if (layout.free) drawFree(ctx, opts, style, layout.free);
   if (style.arrow && opts.arrow) drawArrow(ctx, layout);
 }
 
@@ -775,6 +850,21 @@ function drawArrow(ctx: CanvasRenderingContext2D, layout: Layout): void {
   ctx.fill();
 }
 
+/**
+ * Donde arranca una linea. Centrada, alrededor del centro del bloque. A la
+ * izquierda, en NEW se pega al margen lateral, como la slide de referencia; en
+ * CLASSIC y TIKTOK el bloque sigue centrado y las lineas se alinean entre si
+ * por la izquierda, tomando como referencia la mas larga, como en el Meme
+ * Generator.
+ */
+function lineX(opts: RenderOptions, style: Style, block: Block, line: Line): number {
+  const cx = block.cx ?? CANVAS_W / 2;
+  if (opts.align === "center") return cx - line.width / 2;
+  if (style.layout === "overlay") return opts.marginSide;
+  const widest = Math.max(0, ...block.lines.map((l) => l.width));
+  return cx - widest / 2;
+}
+
 function drawBlock(
   ctx: CanvasRenderingContext2D,
   opts: RenderOptions,
@@ -786,11 +876,106 @@ function drawBlock(
 
   block.lines.forEach((line, i) => {
     const baseline = block.baselines[i] ?? 0;
-    let x = style.align === "center" ? (CANVAS_W - line.width) / 2 : opts.marginSide;
+    let x = lineX(opts, style, block, line);
     for (const token of line.tokens) {
       if (!token.space) {
         setFont(ctx, style, block.size * token.scale);
         ctx.fillStyle = token.highlight ? opts.colorHighlight : opts.colorText;
+        ctx.fillText(token.text, x, baseline);
+      }
+      x += token.width;
+    }
+  });
+}
+
+/** Un emoji, o una bandera, que van con su propia letra y a color. */
+const EMOJI_RE = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/** Parte un texto en tramos de letra y tramos de emoji. */
+function runs(text: string): { text: string; emoji: boolean }[] {
+  const out: { text: string; emoji: boolean }[] = [];
+  for (const { segment } of graphemes.segment(text)) {
+    const emoji = EMOJI_RE.test(segment);
+    const last = out[out.length - 1];
+    if (last && last.emoji === emoji) last.text += segment;
+    else out.push({ text: segment, emoji });
+  }
+  return out;
+}
+
+/** Negro o blanco, el que se lea mejor sobre `hex`. */
+function contrast(hex: string): string {
+  const n = Number.parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16);
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return lum > 0.6 ? "#000000" : "#ffffff";
+}
+
+/**
+ * El texto de TIKTOK: cada linea centrada en `cx`, con su caja detras si hay
+ * fondo y con trazo negro si se pide. El trazo se salta los emojis: alrededor
+ * de un dibujo a color queda un borde sucio, y en la app tampoco lo llevan.
+ */
+function drawFree(
+  ctx: CanvasRenderingContext2D,
+  opts: RenderOptions,
+  style: Style,
+  block: Block,
+): void {
+  const { cap, desc } = ratio(ctx, style);
+  const size = block.size;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+
+  if (opts.box) {
+    // La caja abarca lo que de verdad sube y baja cada linea: un emoji es mas
+    // alto que una mayuscula y no debe salirse por arriba.
+    const padX = TIKTOK_BOX.padX * size;
+    const padY = TIKTOK_BOX.padY * size;
+    ctx.fillStyle = opts.colorText;
+    block.lines.forEach((line, i) => {
+      if (line.tokens.length === 0) return;
+      const baseline = block.baselines[i] ?? 0;
+      let up = cap * size * line.scale;
+      let down = desc * size;
+      for (const t of line.tokens) {
+        if (t.space) continue;
+        setFont(ctx, style, size * t.scale);
+        const m = ctx.measureText(t.text);
+        up = Math.max(up, m.actualBoundingBoxAscent);
+        down = Math.max(down, m.actualBoundingBoxDescent);
+      }
+      ctx.beginPath();
+      ctx.roundRect(
+        lineX(opts, style, block, line) - padX,
+        baseline - up - padY,
+        line.width + padX * 2,
+        up + down + padY * 2,
+        TIKTOK_BOX.radius * size,
+      );
+      ctx.fill();
+    });
+  }
+
+  const plain = opts.box ? contrast(opts.colorText) : opts.colorText;
+  block.lines.forEach((line, i) => {
+    const baseline = block.baselines[i] ?? 0;
+    let x = lineX(opts, style, block, line);
+    for (const token of line.tokens) {
+      if (!token.space) {
+        const px = size * token.scale;
+        setFont(ctx, style, px);
+        if (opts.stroke) {
+          ctx.lineWidth = TIKTOK_STROKE * px * 2;
+          ctx.lineJoin = "round";
+          ctx.strokeStyle = "#000000";
+          let sx = x;
+          for (const run of runs(token.text)) {
+            if (!run.emoji) ctx.strokeText(run.text, sx, baseline);
+            sx += ctx.measureText(run.text).width;
+          }
+        }
+        ctx.fillStyle = token.highlight ? opts.colorHighlight : plain;
         ctx.fillText(token.text, x, baseline);
       }
       x += token.width;

@@ -32,7 +32,16 @@ export type Kind = "portada" | "slide";
  * blanca arriba con el texto en negro, como el Meme Generator, y la imagen
  * debajo.
  */
-export type Look = "new" | "classic";
+export type Look = "new" | "classic" | "tiktok";
+
+/**
+ * Los emojis van con Noto Color Emoji, la de Google: a color y la misma en
+ * cualquier equipo. Sin ella cada sistema pinta los suyos (en Windows salen
+ * planos). Los de Apple, que son los que se ven en las redes desde un iPhone,
+ * no se pueden servir: su licencia no lo permite. Va en todas las pilas detras
+ * de la letra del texto, asi que solo entra en lo que esa letra no tiene.
+ */
+const EMOJI = '"Noto Color Emoji"';
 
 /** Lo que distingue a una portada de una slide. */
 export interface Style {
@@ -68,7 +77,7 @@ export interface Style {
    * `overlay`: el texto va sobre la imagen, con banda y difuminado. `band`: el
    * texto va en una banda lisa arriba y la imagen ocupa lo que queda debajo.
    */
-  layout: "overlay" | "band";
+  layout: "overlay" | "band" | "free";
   /** Color de las bandas y de lo que no tape la imagen. */
   background: string;
   /** La junta entre dos imagenes. */
@@ -93,7 +102,7 @@ export interface Style {
  */
 export const STYLES: Record<Kind, Style> = {
   portada: {
-    font: { family: "Anton", stack: '"Anton", Impact, "Arial Narrow", sans-serif', weight: 400 },
+    font: { family: "Anton", stack: `"Anton", ${EMOJI}, Impact, "Arial Narrow", sans-serif`, weight: 400 },
     upper: true,
     align: "center",
     size: 101,
@@ -116,7 +125,7 @@ export const STYLES: Record<Kind, Style> = {
     colorHighlight: "#ffff00",
   },
   slide: {
-    font: { family: "Poppins", stack: '"Poppins", system-ui, sans-serif', weight: 700 },
+    font: { family: "Poppins", stack: `"Poppins", ${EMOJI}, system-ui, sans-serif`, weight: 700 },
     upper: false,
     align: "left",
     size: 64,
@@ -150,7 +159,7 @@ export const STYLES: Record<Kind, Style> = {
  * llevar escrita su flecha («-->») al final del texto.
  */
 export const CLASSIC: Style = {
-  font: { family: "SF Pro Display", stack: '"SF Pro Display", system-ui, sans-serif', weight: 500 },
+  font: { family: "SF Pro Display", stack: `"SF Pro Display", ${EMOJI}, system-ui, sans-serif`, weight: 500 },
   upper: false,
   align: "center",
   size: 79,
@@ -172,12 +181,62 @@ export const CLASSIC: Style = {
 };
 
 /** El estilo de una pieza: lo deciden el aspecto del hilo y su tipo. */
+/**
+ * TIKTOK: el rotulo de TikTok encima de la imagen, que la ocupa entera. La
+ * letra es TikTok Sans, la de la propia app. El texto va centrado alrededor de
+ * un punto que se arrastra a cualquier sitio, con trazo negro y con o sin
+ * fondo, que se eligen en cada pieza.
+ *
+ * Medido sobre la referencia «un random VARIOS días cualquiera:»: la primera
+ * linea mide el 76 % del ancho, 819 px, que en TikTok Sans son 72 px de
+ * cuerpo; las baselines van cada 1,31 cuerpos y el trazo asoma ~3 px.
+ */
+export const TIKTOK: Style = {
+  font: { family: "TikTok Sans", stack: `"TikTok Sans", ${EMOJI}, system-ui, sans-serif`, weight: 600 },
+  upper: false,
+  align: "center",
+  size: 72,
+  sizeMin: 30,
+  sizeMax: 180,
+  gapEm: 0.6,
+  trackingEm: 0,
+  fade: 0,
+  marginBottom: 100,
+  bandPad: 0,
+  arrow: false,
+  marginTop: 120,
+  marginSide: 80,
+  layout: "free",
+  background: "#000000",
+  divider: { width: 3, color: "#000000" },
+  colorText: "#ffffff",
+  colorHighlight: "#ffff00",
+};
+
+/** Donde arranca el texto de TIKTOK: su centro, en px de lienzo. */
+export const TIKTOK_POS = { x: 540, y: 420 };
+
+/**
+ * El trazo de TIKTOK, en emes: lo que asoma por fuera de la letra. El fondo
+ * es una caja redondeada por linea, con este aire alrededor del texto. Como en
+ * la app, la caja toma el color del texto y la letra pasa a negro o a blanco,
+ * la que se lea sobre ella.
+ */
+export const TIKTOK_STROKE = 0.045;
+export const TIKTOK_BOX = { padX: 0.32, padY: 0.2, radius: 0.24 };
+
+/** El estilo de una pieza: lo deciden el aspecto del hilo y su tipo. */
 export function styleFor(look: Look, kind: Kind): Style {
-  return look === "classic" ? CLASSIC : STYLES[kind];
+  if (look === "classic") return CLASSIC;
+  if (look === "tiktok") return TIKTOK;
+  return STYLES[kind];
 }
 
 /** Todas las letras que puede pedir el hilo, para cargarlas antes de medir. */
-export const FONTS: Font[] = [STYLES.portada.font, STYLES.slide.font, CLASSIC.font];
+export const FONTS: Font[] = [STYLES.portada.font, STYLES.slide.font, CLASSIC.font, TIKTOK.font];
+
+/** La de los emojis se carga aparte, cuando aparece uno: pesa mucho. */
+export const EMOJI_FONT = "Noto Color Emoji";
 
 /**
  * Lo que crece lo +destacado+ respecto al resto. Es cosa aparte del

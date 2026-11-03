@@ -742,9 +742,24 @@ input[type="range"]:disabled {
   margin: 8px 0 10px;
 }
 
-/* NEW / CLASSIC encima de PORTADA / SLIDE. */
+/* NEW / CLASSIC / TIKTOK encima de PORTADA / SLIDE. */
 .seg + .seg {
   margin-top: 8px;
+}
+
+/* Centrado o izquierda, debajo del texto. */
+.align-seg {
+  margin-bottom: 14px;
+}
+
+.seg-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* Trazo y fondo de TIKTOK, uno al lado del otro. */
+.checks {
+  display: flex;
+  gap: 22px;
 }
 
 /* La casilla de la flecha, con su texto al lado y no debajo. */

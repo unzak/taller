@@ -12,7 +12,9 @@ import {
   MARGIN_MAX,
   MARGIN_MIN,
   MARGIN_SIDE_MAX,
+  EMOJI_FONT,
   FONTS,
+  TIKTOK_POS,
   styleFor,
   ZOOM_MAX,
   ZOOM_MIN,
@@ -58,6 +60,14 @@ const kindHintEl = need<HTMLParagraphElement>("kind-hint");
 const lookEls: Record<Look, HTMLButtonElement> = {
   new: need<HTMLButtonElement>("look-new"),
   classic: need<HTMLButtonElement>("look-classic"),
+  tiktok: need<HTMLButtonElement>("look-tiktok"),
+};
+const tiktokFieldsEl = need<HTMLDivElement>("tiktok-fields");
+const tkStrokeEl = need<HTMLInputElement>("tk-stroke");
+const tkBoxEl = need<HTMLInputElement>("tk-box");
+const alignEls = {
+  center: need<HTMLButtonElement>("align-center"),
+  left: need<HTMLButtonElement>("align-left"),
 };
 const textNameEl = need<HTMLSpanElement>("text-name");
 const bandPadNameEl = need<HTMLSpanElement>("band-pad-name");
@@ -65,6 +75,7 @@ const bandPadNoteEl = need<HTMLSpanElement>("band-pad-note");
 const marginTopFieldEl = need<HTMLDivElement>("margin-top-field");
 const marginBottomFieldEl = need<HTMLDivElement>("margin-bottom-field");
 const marginsTitleEl = need<HTMLHeadingElement>("margins-title");
+const bandPadFieldEl = need<HTMLInputElement>("band-pad").closest<HTMLDivElement>(".field")!;
 const resetAllEl = need<HTMLButtonElement>("reset-all");
 const arrowFieldEl = need<HTMLLabelElement>("arrow-field");
 const arrowEl = need<HTMLInputElement>("arrow");
@@ -200,6 +211,13 @@ interface Slide {
   active: number;
   /** La mosca. Existe siempre; sale cuando su apartado esta abierto. */
   inset: Inset & { on: boolean; media: Media | null };
+  /** TIKTOK: el centro del texto, que se arrastra a cualquier sitio. */
+  pos: { x: number; y: number };
+  /** Centrado o a la izquierda. Arranca en lo que pide el estilo. */
+  align: "center" | "left";
+  /** TIKTOK: trazo negro y caja de fondo, cada uno por su lado. */
+  stroke: boolean;
+  box: boolean;
   /** Tramo del video que se exporta. Arranca abarcandolo entero. */
   trim: { start: number; end: number };
   /** Su miniatura en la tira: una copia de la ultima previa. */
@@ -225,6 +243,8 @@ function applyDefaults(s: Slide): void {
   s.marginTop = style.marginTop;
   s.marginSide = style.marginSide;
   s.bandPad = style.bandPad;
+  s.pos = { ...TIKTOK_POS };
+  s.align = style.align;
 }
 
 function newSlide(kind: Kind): Slide {
@@ -258,6 +278,10 @@ function newSlide(kind: Kind): Slide {
       offsetX: 0,
       offsetY: 0,
     },
+    pos: { ...TIKTOK_POS },
+    stroke: true,
+    box: false,
+    align: styleFor(look, kind).align,
     trim: { start: 0, end: 0 },
     thumb,
   };
@@ -291,6 +315,7 @@ function video(): HTMLVideoElement | null {
 }
 
 function options(s: Slide, placeholder: boolean): RenderOptions {
+  loadEmoji(s.text + (s.topOn ? s.topText : ""));
   return {
     look,
     kind: s.kind,
@@ -313,7 +338,31 @@ function options(s: Slide, placeholder: boolean): RenderOptions {
     colorText: textColorEl.value,
     colorHighlight: highlightEl.value,
     placeholder,
+    pos: s.pos,
+    stroke: s.stroke,
+    box: s.box,
+    align: s.align,
   };
+}
+
+/**
+ * La letra de los emojis llega a trozos: Google la sirve partida y el
+ * navegador baja solo el trozo de los emojis que se usan. El lienzo no espera
+ * a nadie, asi que cuando aparece uno sin su trozo se pide y, al llegar, se
+ * vuelve a pintar todo.
+ */
+function loadEmoji(text: string): void {
+  if (!/\p{Extended_Pictographic}/u.test(text)) return;
+  const font = `64px "${EMOJI_FONT}"`;
+  if (document.fonts.check(font, text)) return;
+  void document.fonts.load(font, text).then(
+    () => {
+      resetMetrics();
+      for (const s of slides) if (s !== cur()) paintThumb(s);
+      draw();
+    },
+    () => undefined,
+  );
 }
 
 function setStatus(message: string, kind: "" | "error" = ""): void {
@@ -404,21 +453,33 @@ function showSlide(): void {
   for (const kind of ["portada", "slide"] as const) {
     kindEls[kind].setAttribute("aria-checked", String(s.kind === kind));
   }
-  for (const l of ["new", "classic"] as const) {
+  for (const l of ["new", "classic", "tiktok"] as const) {
     lookEls[l].setAttribute("aria-checked", String(look === l));
   }
   const classic = look === "classic";
+  const tiktok = look === "tiktok";
   kindHintEl.textContent = classic
     ? "Banda blanca arriba con el texto en negro y la imagen debajo. Vale para todo el hilo."
-    : s.kind === "portada"
-      ? "Todo en mayúsculas, centrado, y con la flecha al pie."
-      : "Tal cual se escriba, alineado a la izquierda.";
+    : tiktok
+      ? "La imagen entera y el texto suelto encima, como en TikTok. Vale para todo el hilo."
+      : s.kind === "portada"
+        ? "Todo en mayúsculas, centrado, y con la flecha al pie."
+        : "Tal cual se escriba, alineado a la izquierda.";
 
-  // CLASSIC tiene un solo texto, arriba: sin texto superior aparte ni margen
-  // inferior, y el margen superior pasa a los margenes, que es donde se busca.
-  textNameEl.textContent = classic ? "Texto" : "Texto inferior";
-  topSectionEl.hidden = classic;
-  marginBottomFieldEl.hidden = classic;
+  // CLASSIC y TIKTOK tienen un solo texto: sin texto superior aparte ni margen
+  // inferior. En CLASSIC el margen superior pasa a los margenes, que es donde
+  // se busca; en TIKTOK no hay margenes de arriba y abajo, ni banda: el texto
+  // se coloca arrastrandolo.
+  textNameEl.textContent = look === "new" ? "Texto inferior" : "Texto";
+  topSectionEl.hidden = look !== "new";
+  marginBottomFieldEl.hidden = look !== "new";
+  bandPadFieldEl.hidden = tiktok;
+  tiktokFieldsEl.hidden = !tiktok;
+  tkStrokeEl.checked = s.stroke;
+  tkBoxEl.checked = s.box;
+  for (const a of ["center", "left"] as const) {
+    alignEls[a].setAttribute("aria-checked", String(s.align === a));
+  }
   if (classic) marginsTitleEl.after(marginTopFieldEl);
   else topSectionEl.append(marginTopFieldEl);
   bandPadNameEl.textContent = classic ? "Blanco bajo el texto" : "Negro sobre el texto";
@@ -444,7 +505,7 @@ function showSlide(): void {
   showTime();
 }
 
-for (const l of ["new", "classic"] as const) {
+for (const l of ["new", "classic", "tiktok"] as const) {
   lookEls[l].addEventListener("click", () => {
     if (look === l) return;
     look = l;
@@ -473,12 +534,31 @@ for (const kind of ["portada", "slide"] as const) {
     s.topSize = styleFor(look, kind).size;
     s.marginBottom = styleFor(look, kind).marginBottom;
     s.bandPad = styleFor(look, kind).bandPad;
+    s.align = styleFor(look, kind).align;
     showStrip();
     showSlide();
     draw();
   });
 }
 
+tkStrokeEl.addEventListener("change", () => {
+  cur().stroke = tkStrokeEl.checked;
+  draw();
+});
+for (const a of ["center", "left"] as const) {
+  alignEls[a].addEventListener("click", () => {
+    const s = cur();
+    if (s.align === a) return;
+    s.align = a;
+    showSlide();
+    draw();
+  });
+}
+
+tkBoxEl.addEventListener("change", () => {
+  cur().box = tkBoxEl.checked;
+  draw();
+});
 textEl.addEventListener("input", () => {
   cur().text = textEl.value;
   draw();
@@ -618,6 +698,11 @@ function moved(r: Reset, s: Slide): boolean {
 }
 
 /** Algun encuadre de la pieza no esta en el centro y a su tamaño. */
+/** El texto de TIKTOK no esta donde arranca. */
+function placed(s: Slide): boolean {
+  return look === "tiktok" && (s.pos.x !== TIKTOK_POS.x || s.pos.y !== TIKTOK_POS.y);
+}
+
 function framed(s: Slide): boolean {
   return s.items.some(
     (it) => it.transform.zoom !== 1 || it.transform.offsetX !== 0 || it.transform.offsetY !== 0,
@@ -634,7 +719,7 @@ function showResets(): void {
     const btn = resetButtons[i];
     if (btn) btn.hidden = !moved(r, s);
   });
-  resetAllEl.disabled = !RESETS.some((r) => moved(r, s)) && !framed(s);
+  resetAllEl.disabled = !RESETS.some((r) => moved(r, s)) && !framed(s) && !placed(s);
 }
 
 // Todo de una vez, para la pieza abierta: las medidas y el encuadre de sus
@@ -643,6 +728,7 @@ function showResets(): void {
 resetAllEl.addEventListener("click", () => {
   const s = cur();
   for (const r of RESETS) r.set(s, r.def(s));
+  s.pos = { ...TIKTOK_POS };
   resetFraming(s);
   draw();
 });
@@ -1304,8 +1390,28 @@ function toCanvas(clientX: number, clientY: number): { x: number; y: number } {
   return { x: (clientX - rect.left) * s, y: (clientY - rect.top) * s };
 }
 
+/**
+ * El texto de TIKTOK no se sale del lienzo: si su caja asoma por un borde, se
+ * empuja hacia dentro. Si es mas grande que el lienzo, se queda centrado.
+ */
+function clampText(s: Slide): void {
+  if (look !== "tiktok") return;
+  const box = computeLayout(previewCtx, options(s, true)).freeBox;
+  if (!box) return;
+  const shift = (start: number, size: number, limit: number): number => {
+    if (size >= limit) return limit / 2 - (start + size / 2);
+    if (start < 0) return -start;
+    if (start + size > limit) return limit - (start + size);
+    return 0;
+  };
+  const dx = shift(box.x, box.w, CANVAS_W);
+  const dy = shift(box.y, box.h, CANVAS_H);
+  if (dx !== 0 || dy !== 0) s.pos = { x: s.pos.x + dx, y: s.pos.y + dy };
+}
+
 function clampOffset(s: Slide): void {
   if (s.inset.on) clampInsetOffset(s.inset);
+  clampText(s);
   if (s.items.length === 0) return;
   // Los huecos dependen del texto y de los margenes, nunca del encuadre, asi
   // que se le pueden preguntar a la composicion antes de recortar nada.
@@ -1316,7 +1422,8 @@ function clampOffset(s: Slide): void {
   });
 }
 
-type TextTarget = "top" | "bottom";
+/** `free` es el texto suelto de TIKTOK, que se mueve en las dos direcciones. */
+type TextTarget = "top" | "bottom" | "free";
 type Target = TextTarget | "media" | "inset";
 
 /**
@@ -1329,6 +1436,19 @@ function targetAt(clientX: number, clientY: number): Target | null {
   const layout = computeLayout(previewCtx, options(cur(), true));
   if (layout.top && p.y < layout.bandTop) return "top";
   if (layout.bottom && p.y >= layout.bandBottom) return "bottom";
+  // El de TIKTOK va encima de todo: se coge por su caja, con algo de holgura
+  // para que no haya que acertar en la letra.
+  const box = layout.freeBox;
+  const slack = 24;
+  if (
+    box &&
+    p.x >= box.x - slack &&
+    p.x <= box.x + box.w + slack &&
+    p.y >= box.y - slack &&
+    p.y <= box.y + box.h + slack
+  ) {
+    return "free";
+  }
   const s = cur();
   // La mosca va encima de la imagen, asi que se coge antes que ella.
   if (s.inset.on && hitsInset(s.inset, p.x, p.y)) return "inset";
@@ -1359,11 +1479,17 @@ function setSize(target: TextTarget, size: number): void {
 
 /**
  * Sube y baja un texto. `dy` viene en pixeles de lienzo y el margen tambien,
- * asi que el bloque sigue al puntero exactamente.
+ * asi que el bloque sigue al puntero exactamente. El de TIKTOK se mueve
+ * ademas a lo ancho, sin salirse del lienzo.
  */
-function moveText(target: TextTarget, dy: number): void {
+function moveText(target: TextTarget, dy: number, dx = 0): void {
   const s = cur();
-  if (target === "top") s.marginTop = clamp(s.marginTop + dy, MARGIN_MIN, MARGIN_MAX);
+  if (target === "free") {
+    s.pos = {
+      x: clamp(s.pos.x + dx, 0, CANVAS_W),
+      y: clamp(s.pos.y + dy, 0, CANVAS_H),
+    };
+  } else if (target === "top") s.marginTop = clamp(s.marginTop + dy, MARGIN_MIN, MARGIN_MAX);
   else s.marginBottom = clamp(s.marginBottom - dy, MARGIN_MIN, MARGIN_MAX);
 }
 
@@ -1411,7 +1537,7 @@ previewEl.addEventListener("pointerdown", (e) => {
     pinch = {
       dist: g.dist,
       zoom: item()?.transform.zoom ?? 1,
-      size: target === "top" || target === "bottom" ? sizeOf(target) : 0,
+      size: target !== "media" && target !== "inset" ? sizeOf(target) : 0,
       radius: cur().inset.radius,
       insetZoom: cur().inset.zoom,
     };
@@ -1452,7 +1578,7 @@ previewEl.addEventListener("pointermove", (e) => {
       scaleInset(pinch.radius * ratio, pinch.insetZoom * ratio);
       draw();
     } else {
-      moveText(target, (g.my - lastY) * s);
+      moveText(target, (g.my - lastY) * s, (g.mx - lastX) * s);
       setSize(target, pinch.size * ratio);
     }
     lastX = g.mx;
@@ -1466,8 +1592,9 @@ previewEl.addEventListener("pointermove", (e) => {
   } else if (target === "inset") {
     dragInset((e.clientX - lastX) * s, (e.clientY - lastY) * s);
   } else {
-    // El texto solo sube y baja: a lo ancho lo coloca su alineacion.
-    moveText(target, (e.clientY - lastY) * s);
+    // El texto solo sube y baja: a lo ancho lo coloca su alineacion. Salvo
+    // el de TIKTOK, que va a donde se lleve.
+    moveText(target, (e.clientY - lastY) * s, (e.clientX - lastX) * s);
   }
   lastX = e.clientX;
   lastY = e.clientY;
@@ -1944,6 +2071,11 @@ interface SavedSlide {
   arrow: boolean;
   active: number;
   trim: { start: number; end: number };
+  /** De TIKTOK. Los hilos de antes no los traen. */
+  pos?: { x: number; y: number };
+  stroke?: boolean;
+  box?: boolean;
+  align?: "center" | "left";
   items: { fileId: string; transform: MediaTransform; flip: boolean }[];
   inset: {
     on: boolean;
@@ -1993,6 +2125,10 @@ function saved(s: Slide): SavedSlide {
     arrow: s.arrow,
     active: s.active,
     trim: { ...s.trim },
+    pos: { ...s.pos },
+    stroke: s.stroke,
+    box: s.box,
+    align: s.align,
     items: s.items.map((it) => ({
       fileId: it.media.id,
       transform: { ...it.transform },
@@ -2059,6 +2195,10 @@ async function revive(
   s.bigScale = d.bigScale;
   s.arrow = d.arrow;
   s.trim = { ...d.trim };
+  if (d.pos) s.pos = { ...d.pos };
+  s.stroke = d.stroke ?? true;
+  s.box = d.box ?? false;
+  s.align = d.align ?? styleOf(s).align;
 
   const load = async (fileId: string): Promise<Media | null> => {
     const file = await getFile(fileId);

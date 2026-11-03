@@ -10,12 +10,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
-      Inter es la letra de la interfaz. Anton y Poppins no son decoracion: son
-      las dos con las que se rotula el hilo, la portada y las slides, asi que
-      tienen que estar cargadas antes de medir nada.
+      Inter es la letra de la interfaz. Anton, Poppins y TikTok Sans no son
+      decoracion: son con las que se rotula el hilo, asi que tienen que estar
+      cargadas antes de medir nada. Noto Color Emoji pinta los emojis.
     -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400..900&family=Poppins:wght@700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400..900&family=Noto+Color+Emoji&family=Poppins:wght@700&family=TikTok+Sans:wght@600&display=swap"
       rel="stylesheet"
     />
   </head>
@@ -56,9 +56,10 @@
       <section class="panel">
         <h2>1 · Tipo</h2>
         <!-- El aspecto vale para todo el hilo; portada o slide, para cada pieza. -->
-        <div class="seg" role="radiogroup" aria-label="Aspecto del hilo">
+        <div class="seg seg-3" role="radiogroup" aria-label="Aspecto del hilo">
           <button type="button" class="seg-btn" id="look-new" role="radio">NEW</button>
           <button type="button" class="seg-btn" id="look-classic" role="radio">CLASSIC</button>
+          <button type="button" class="seg-btn" id="look-tiktok" role="radio">TIKTOK</button>
         </div>
         <div class="seg" role="radiogroup" aria-label="Tipo de pieza">
           <button type="button" class="seg-btn" id="kind-portada" role="radio">PORTADA</button>
@@ -81,6 +82,29 @@
             <span class="muted small">· *resaltado* cambia el color · +destacado+ lo agranda</span>
           </label>
           <textarea id="text" rows="3" placeholder="Escribe aquí el texto"></textarea>
+        </div>
+
+        <div class="seg align-seg" role="radiogroup" aria-label="Alineación del texto">
+          <button type="button" class="seg-btn" id="align-center" role="radio">CENTRADO</button>
+          <button type="button" class="seg-btn" id="align-left" role="radio">IZQUIERDA</button>
+        </div>
+
+        <!-- Solo en TIKTOK: el texto va suelto sobre la imagen. -->
+        <div id="tiktok-fields" hidden>
+          <p class="muted small hint">
+            Arrastra el texto por la vista previa para colocarlo donde quieras;
+            con la rueda o pellizcando cambia de tamaño.
+          </p>
+          <div class="checks">
+            <label class="check" for="tk-stroke">
+              <input type="checkbox" id="tk-stroke" checked />
+              Trazo
+            </label>
+            <label class="check" for="tk-box">
+              <input type="checkbox" id="tk-box" />
+              Fondo
+            </label>
+          </div>
         </div>
 
         <div class="field">
