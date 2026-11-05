@@ -190,6 +190,8 @@ interface Item {
  * tambien las que no lo estan.
  */
 interface Slide {
+  /** NEW, CLASSIC o TIKTOK. Cada pieza el suyo. */
+  look: Look;
   kind: Kind;
   text: string;
   size: number;
@@ -225,13 +227,24 @@ interface Slide {
 }
 
 /**
- * NEW o CLASSIC. Es del hilo entero, no de cada pieza: un carrusel no mezcla
- * los dos aspectos, y asi los colores, que tambien son del hilo, casan.
+ * Los colores del texto van por aspecto y valen para todas las piezas de ese
+ * aspecto: el blanco y amarillo de NEW no sirven sobre la banda blanca de
+ * CLASSIC. Cambiar un color en una pieza lo cambia en las de su mismo aspecto.
  */
-let look: Look = "new";
+type Colors = Record<Look, { text: string; highlight: string }>;
+
+function defaultColors(): Colors {
+  const of = (l: Look) => ({
+    text: styleFor(l, "portada").colorText,
+    highlight: styleFor(l, "portada").colorHighlight,
+  });
+  return { new: of("new"), classic: of("classic"), tiktok: of("tiktok") };
+}
+
+let colors: Colors = defaultColors();
 
 function styleOf(s: Slide): Style {
-  return styleFor(look, s.kind);
+  return styleFor(s.look, s.kind);
 }
 
 /** Las medidas de partida de una pieza, segun su tipo y el aspecto del hilo. */
@@ -247,11 +260,12 @@ function applyDefaults(s: Slide): void {
   s.align = style.align;
 }
 
-function newSlide(kind: Kind): Slide {
+function newSlide(kind: Kind, look: Look = "new"): Slide {
   const thumb = document.createElement("canvas");
   thumb.width = 108;
   thumb.height = 144;
   return {
+    look,
     kind,
     text: "",
     size: styleFor(look, kind).size,
@@ -317,7 +331,7 @@ function video(): HTMLVideoElement | null {
 function options(s: Slide, placeholder: boolean): RenderOptions {
   loadEmoji(s.text + (s.topOn ? s.topText : ""));
   return {
-    look,
+    look: s.look,
     kind: s.kind,
     items: s.items.map((it) => ({
       source: it.media.el,
@@ -335,8 +349,8 @@ function options(s: Slide, placeholder: boolean): RenderOptions {
     bandPad: s.bandPad,
     bigScale: s.bigScale,
     arrow: s.arrow,
-    colorText: textColorEl.value,
-    colorHighlight: highlightEl.value,
+    colorText: colors[s.look].text,
+    colorHighlight: colors[s.look].highlight,
     placeholder,
     pos: s.pos,
     stroke: s.stroke,
@@ -408,7 +422,8 @@ function showStrip(): void {
   add.title = "Añadir una slide";
   add.setAttribute("aria-label", "Añadir una slide");
   add.addEventListener("click", () => {
-    slides.push(newSlide("slide"));
+    // La nueva hereda el aspecto de la abierta: lo normal es seguir igual.
+    slides.push(newSlide("slide", cur().look));
     select(slides.length - 1);
   });
   stripEl.replaceChildren(...items, add);
@@ -454,14 +469,17 @@ function showSlide(): void {
     kindEls[kind].setAttribute("aria-checked", String(s.kind === kind));
   }
   for (const l of ["new", "classic", "tiktok"] as const) {
-    lookEls[l].setAttribute("aria-checked", String(look === l));
+    lookEls[l].setAttribute("aria-checked", String(s.look === l));
   }
+  const look = s.look;
   const classic = look === "classic";
   const tiktok = look === "tiktok";
+  textColorEl.value = colors[look].text;
+  highlightEl.value = colors[look].highlight;
   kindHintEl.textContent = classic
-    ? "Banda blanca arriba con el texto en negro y la imagen debajo. Vale para todo el hilo."
+    ? "Banda blanca arriba con el texto en negro y la imagen debajo."
     : tiktok
-      ? "La imagen entera y el texto suelto encima, como en TikTok. Vale para todo el hilo."
+      ? "La imagen entera y el texto suelto encima, como en TikTok."
       : s.kind === "portada"
         ? "Todo en mayúsculas, centrado, y con la flecha al pie."
         : "Tal cual se escriba, alineado a la izquierda.";
@@ -507,17 +525,12 @@ function showSlide(): void {
 
 for (const l of ["new", "classic", "tiktok"] as const) {
   lookEls[l].addEventListener("click", () => {
-    if (look === l) return;
-    look = l;
-    // Cambia la letra y la banda de todas las piezas: sus medidas vuelven a
-    // las de partida del aspecto nuevo, y los colores tambien. El texto, los
-    // archivos y los encuadres se quedan.
-    for (const s of slides) applyDefaults(s);
-    const style = styleFor(look, "portada");
-    textColorEl.value = style.colorText;
-    highlightEl.value = style.colorHighlight;
-    pausePreview();
-    for (const s of slides) if (s !== cur()) paintThumb(s);
+    const s = cur();
+    if (s.look === l) return;
+    s.look = l;
+    // Solo cambia la pieza abierta: sus medidas vuelven a las de partida del
+    // aspecto nuevo. El texto, los archivos y los encuadres se quedan.
+    applyDefaults(s);
     showSlide();
     draw();
   });
@@ -530,11 +543,11 @@ for (const kind of ["portada", "slide"] as const) {
     s.kind = kind;
     // Cada tipo tiene su letra y su banda: las medidas de la una no valen
     // para la otra.
-    s.size = styleFor(look, kind).size;
-    s.topSize = styleFor(look, kind).size;
-    s.marginBottom = styleFor(look, kind).marginBottom;
-    s.bandPad = styleFor(look, kind).bandPad;
-    s.align = styleFor(look, kind).align;
+    s.size = styleFor(s.look, kind).size;
+    s.topSize = styleFor(s.look, kind).size;
+    s.marginBottom = styleFor(s.look, kind).marginBottom;
+    s.bandPad = styleFor(s.look, kind).bandPad;
+    s.align = styleFor(s.look, kind).align;
     showStrip();
     showSlide();
     draw();
@@ -556,7 +569,14 @@ for (const a of ["center", "left"] as const) {
 }
 
 tkBoxEl.addEventListener("change", () => {
-  cur().box = tkBoxEl.checked;
+  const s = cur();
+  s.box = tkBoxEl.checked;
+  // Con fondo, fuera el trazo: la caja ya separa el texto de la imagen. Se
+  // puede volver a marcar a mano.
+  if (s.box) {
+    s.stroke = false;
+    tkStrokeEl.checked = false;
+  }
   draw();
 });
 textEl.addEventListener("input", () => {
@@ -603,7 +623,14 @@ topSectionEl.addEventListener("toggle", () => {
   cur().topOn = topSectionEl.open;
   draw();
 });
-for (const el of [textColorEl, highlightEl]) el.addEventListener("input", draw);
+/** Un color nuevo vale para todas las piezas del aspecto de la abierta. */
+function setColors(): void {
+  const look = cur().look;
+  colors[look] = { text: textColorEl.value, highlight: highlightEl.value };
+  for (const s of slides) if (s !== cur() && s.look === look) paintThumb(s);
+  draw();
+}
+for (const el of [textColorEl, highlightEl]) el.addEventListener("input", setColors);
 
 // --- Volver al valor por defecto --------------------------------------------
 
@@ -700,7 +727,7 @@ function moved(r: Reset, s: Slide): boolean {
 /** Algun encuadre de la pieza no esta en el centro y a su tamaño. */
 /** El texto de TIKTOK no esta donde arranca. */
 function placed(s: Slide): boolean {
-  return look === "tiktok" && (s.pos.x !== TIKTOK_POS.x || s.pos.y !== TIKTOK_POS.y);
+  return s.look === "tiktok" && (s.pos.x !== TIKTOK_POS.x || s.pos.y !== TIKTOK_POS.y);
 }
 
 function framed(s: Slide): boolean {
@@ -991,7 +1018,7 @@ async function loadFiles(files: File[]): Promise<void> {
   if (!first) return;
   await loadFile(first, cur());
   for (const file of rest) {
-    const s = newSlide("slide");
+    const s = newSlide("slide", cur().look);
     slides.push(s);
     await loadFile(file, s);
   }
@@ -1395,7 +1422,7 @@ function toCanvas(clientX: number, clientY: number): { x: number; y: number } {
  * empuja hacia dentro. Si es mas grande que el lienzo, se queda centrado.
  */
 function clampText(s: Slide): void {
-  if (look !== "tiktok") return;
+  if (s.look !== "tiktok") return;
   const box = computeLayout(previewCtx, options(s, true)).freeBox;
   if (!box) return;
   const shift = (start: number, size: number, limit: number): number => {
@@ -1485,12 +1512,63 @@ function setSize(target: TextTarget, size: number): void {
 function moveText(target: TextTarget, dy: number, dx = 0): void {
   const s = cur();
   if (target === "free") {
-    s.pos = {
-      x: clamp(s.pos.x + dx, 0, CANVAS_W),
-      y: clamp(s.pos.y + dy, 0, CANVAS_H),
-    };
+    snapText(s, dx, dy);
   } else if (target === "top") s.marginTop = clamp(s.marginTop + dy, MARGIN_MIN, MARGIN_MAX);
   else s.marginBottom = clamp(s.marginBottom - dy, MARGIN_MIN, MARGIN_MAX);
+}
+
+/**
+ * El iman del texto de TIKTOK, como las guias inteligentes de Photoshop: al
+ * pasar cerca del centro del lienzo, a lo ancho o a lo alto, el texto se queda
+ * clavado en el y sale una guia rosa. Se cuenta en pixeles de pantalla para
+ * que se note igual con la previa grande o pequeña.
+ */
+const SNAP_PX = 10;
+const GUIDE_COLOR = "#ff2d95";
+
+/**
+ * Donde estaria el texto sin iman. El arrastre mueve esta posicion y la de
+ * verdad se calcula a partir de ella: asi, seguir arrastrando despega el
+ * texto de la guia en vez de dejarlo atrapado.
+ */
+let freeRaw: { x: number; y: number } | null = null;
+/** Las guias que se ven ahora: la vertical del centro y la horizontal. */
+let guides = { v: false, h: false };
+
+function snapText(s: Slide, dx: number, dy: number): void {
+  const raw = freeRaw ?? { ...s.pos };
+  raw.x = clamp(raw.x + dx, 0, CANVAS_W);
+  raw.y = clamp(raw.y + dy, 0, CANVAS_H);
+  freeRaw = raw;
+
+  // Se centra la caja que se ve, no el punto de anclaje: a lo alto no
+  // coinciden, porque la caja cuenta tambien las descendentes.
+  const box = computeLayout(previewCtx, options(s, true)).freeBox;
+  const offY = box ? box.y + box.h / 2 - s.pos.y : 0;
+  const t = SNAP_PX * canvasScale();
+  const v = Math.abs(raw.x - CANVAS_W / 2) < t;
+  const h = Math.abs(raw.y + offY - CANVAS_H / 2) < t;
+  s.pos = { x: v ? CANVAS_W / 2 : raw.x, y: h ? CANVAS_H / 2 - offY : raw.y };
+  guides = { v, h };
+}
+
+/** Las guias van solo en la previa: ni en la miniatura ni en la pieza. */
+function drawGuides(): void {
+  if (cur().look !== "tiktok" || (!guides.v && !guides.h)) return;
+  previewCtx.save();
+  previewCtx.strokeStyle = GUIDE_COLOR;
+  previewCtx.lineWidth = 2 * canvasScale();
+  previewCtx.beginPath();
+  if (guides.v) {
+    previewCtx.moveTo(CANVAS_W / 2, 0);
+    previewCtx.lineTo(CANVAS_W / 2, CANVAS_H);
+  }
+  if (guides.h) {
+    previewCtx.moveTo(0, CANVAS_H / 2);
+    previewCtx.lineTo(CANVAS_W, CANVAS_H / 2);
+  }
+  previewCtx.stroke();
+  previewCtx.restore();
 }
 
 /**
@@ -1533,6 +1611,7 @@ previewEl.addEventListener("pointerdown", (e) => {
     // El destino lo decide el punto medio: sobre un texto cambia su cuerpo, y
     // sobre la ventana hace zoom de la imagen.
     target = targetAt(g.mx, g.my);
+    freeRaw = null;
     if (!target) return;
     pinch = {
       dist: g.dist,
@@ -1547,6 +1626,7 @@ previewEl.addEventListener("pointerdown", (e) => {
   }
 
   target = targetAt(e.clientX, e.clientY);
+  freeRaw = null;
   // Pulsar en la ventana vacia es pedir un archivo. Se apunta aqui y se abre
   // en el `click`, que es el gesto que los navegadores aceptan para eso.
   pickOnClick = !target && cur().items.length === 0;
@@ -1620,6 +1700,13 @@ for (const type of ["pointerup", "pointercancel"] as const) {
       }
     } else if (pointers.size === 0) {
       target = null;
+      // Al soltar se apaga el iman: la siguiente vez arranca desde donde
+      // haya quedado el texto, y las guias desaparecen.
+      freeRaw = null;
+      if (guides.v || guides.h) {
+        guides = { v: false, h: false };
+        draw();
+      }
     }
   });
 }
@@ -1726,6 +1813,7 @@ function draw(): void {
   context(s.thumb).drawImage(previewEl, 0, 0, s.thumb.width, s.thumb.height);
   miniCtx.drawImage(previewEl, 0, 0, miniCanvasEl.width, miniCanvasEl.height);
   updateMini();
+  drawGuides();
 }
 
 // --- Vista previa flotante (movil) ------------------------------------------
@@ -2057,6 +2145,8 @@ fixEl.addEventListener("click", () => {
 
 /** Lo que se guarda de cada pieza del hilo. Los archivos, por su `fileId`. */
 interface SavedSlide {
+  /** Los hilos de antes no lo traen: toman el del hilo. */
+  look?: Look;
   kind: Kind;
   text: string;
   size: number;
@@ -2089,12 +2179,16 @@ interface SavedSlide {
   };
 }
 
-/** Un hilo guardado: sus piezas y los dos colores, que son de todo el hilo. */
+/** Un hilo guardado: sus piezas y los colores de cada aspecto. */
 interface WorkData {
-  /** Los hilos de antes de CLASSIC no lo traen: son NEW. */
+  /**
+   * Los hilos de antes guardaban un aspecto y dos colores para todo el hilo.
+   * Se siguen leyendo: es el aspecto de las piezas que no traen el suyo.
+   */
   look?: Look;
-  colorText: string;
-  colorHighlight: string;
+  colorText?: string;
+  colorHighlight?: string;
+  colors?: Colors;
   slides: SavedSlide[];
 }
 
@@ -2111,6 +2205,7 @@ function isEmpty(): boolean {
 
 function saved(s: Slide): SavedSlide {
   return {
+    look: s.look,
     kind: s.kind,
     text: s.text,
     size: s.size,
@@ -2149,9 +2244,7 @@ function saved(s: Slide): SavedSlide {
 
 function workData(): WorkData {
   return {
-    look,
-    colorText: textColorEl.value,
-    colorHighlight: highlightEl.value,
+    colors,
     slides: slides.map(saved),
   };
 }
@@ -2181,8 +2274,9 @@ function replaceSlides(next: Slide[]): void {
 async function revive(
   d: SavedSlide,
   getFile: (id: string) => Promise<File | null>,
+  look: Look,
 ): Promise<Slide> {
-  const s = newSlide(d.kind);
+  const s = newSlide(d.kind, d.look ?? look);
   s.text = d.text;
   s.size = d.size;
   s.topOn = d.topOn;
@@ -2255,20 +2349,23 @@ const historico = historial<WorkData>({
     };
   },
   restore: async (data, getFile) => {
-    // Antes de montar las piezas: sus medidas de partida dependen del aspecto.
-    look = data.look ?? "new";
+    const look = data.look ?? "new";
+    colors = defaultColors();
+    if (data.colors) {
+      Object.assign(colors, data.colors);
+    } else if (data.colorText && data.colorHighlight) {
+      colors[look] = { text: data.colorText, highlight: data.colorHighlight };
+    }
     const next: Slide[] = [];
-    for (const d of data.slides) next.push(await revive(d, getFile));
-    textColorEl.value = data.colorText;
-    highlightEl.value = data.colorHighlight;
+    for (const d of data.slides) next.push(await revive(d, getFile, look));
     replaceSlides(next);
     setStatus("");
   },
   reset: () => {
-    // Un hilo nuevo sigue en el aspecto que se estaba usando.
-    textColorEl.value = styleFor(look, "portada").colorText;
-    highlightEl.value = styleFor(look, "portada").colorHighlight;
-    replaceSlides([newSlide("portada")]);
+    // Un hilo nuevo sigue en el aspecto de la pieza que estaba abierta.
+    const look = cur().look;
+    colors = defaultColors();
+    replaceSlides([newSlide("portada", look)]);
     setStatus("");
   },
   describe: (data) => {
@@ -2286,8 +2383,6 @@ newWorkEl.addEventListener("click", () => void historico.fresh());
 
 previewEl.width = CANVAS_W;
 previewEl.height = CANVAS_H;
-textColorEl.value = styleFor(look, "portada").colorText;
-highlightEl.value = styleFor(look, "portada").colorHighlight;
 hlEl.min = String(BIG_SCALE_MIN);
 hlEl.max = String(BIG_SCALE_MAX);
 bandPadEl.min = String(BAND_PAD_MIN);

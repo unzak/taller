@@ -85,6 +85,12 @@ export interface Style {
   /** Los dos colores de partida del texto. */
   colorText: string;
   colorHighlight: string;
+  /**
+   * Lineas que la banda reserva siempre, haya las que haya. Con menos, el
+   * texto se centra en ese hueco y la imagen empieza en el mismo sitio en
+   * todas las piezas. 0 es que la banda se ajusta al texto.
+   */
+  minLines: number;
 }
 
 /**
@@ -123,6 +129,7 @@ export const STYLES: Record<Kind, Style> = {
     divider: { width: 3, color: "#000000" },
     colorText: "#ffffff",
     colorHighlight: "#ffff00",
+    minLines: 0,
   },
   slide: {
     font: { family: "Poppins", stack: `"Poppins", ${EMOJI}, system-ui, sans-serif`, weight: 700 },
@@ -144,16 +151,20 @@ export const STYLES: Record<Kind, Style> = {
     divider: { width: 3, color: "#000000" },
     colorText: "#ffffff",
     colorHighlight: "#ffff00",
+    minLines: 0,
   },
 };
 
 /**
- * CLASSIC, medido sobre la referencia «Se cumplen 25 años del 11S…»: SF Pro
- * Display Medium, la del Meme Generator, en negro y centrada sobre blanco.
- * Las tres lineas miden 628, 718 y 646 px de tinta, que salen a 79 px de
- * cuerpo con un tracking de -0,043 em; baselines cada 95 px, la primera
- * mayuscula a 99 px del filo, y la imagen empieza en y = 438. Con 176 px de
- * margen lateral el texto se parte solo por donde se parte alli.
+ * CLASSIC, medido sobre la referencia «Estas historias de amor tuvieron un
+ * final que parece imposible»: SF Pro Display Medium, la del Meme Generator,
+ * en negro y centrada sobre blanco. Las dos primeras lineas miden 831 y 995 px
+ * de tinta, que salen a 84,5 px de cuerpo sin tracking; baselines cada 105 px,
+ * la primera mayuscula a 80 px del filo y la imagen empezando en y = 433. Con
+ * 36 px de margen lateral el texto se parte solo por donde se parte alli.
+ *
+ * La banda es siempre la de tres lineas: con una o dos, el texto se centra en
+ * ella y la imagen no se mueve de sitio.
  *
  * Portada y slide son iguales: en la referencia la portada se distingue por
  * llevar escrita su flecha («-->») al final del texto.
@@ -162,22 +173,23 @@ export const CLASSIC: Style = {
   font: { family: "SF Pro Display", stack: `"SF Pro Display", ${EMOJI}, system-ui, sans-serif`, weight: 500 },
   upper: false,
   align: "center",
-  size: 79,
+  size: 84.5,
   sizeMin: 30,
   sizeMax: 140,
-  gapEm: 0.5,
-  trackingEm: -0.043,
+  gapEm: 0.54,
+  trackingEm: 0,
   fade: 0,
   marginBottom: 100,
-  bandPad: 78,
+  bandPad: 67,
   arrow: false,
-  marginTop: 99,
-  marginSide: 176,
+  marginTop: 80,
+  marginSide: 36,
   layout: "band",
   background: "#ffffff",
-  divider: { width: 11, color: "#ffffff" },
+  divider: { width: 9, color: "#ffffff" },
   colorText: "#000000",
   colorHighlight: "#e11d2f",
+  minLines: 3,
 };
 
 /** El estilo de una pieza: lo deciden el aspecto del hilo y su tipo. */
@@ -211,6 +223,7 @@ export const TIKTOK: Style = {
   divider: { width: 3, color: "#000000" },
   colorText: "#ffffff",
   colorHighlight: "#ffff00",
+  minLines: 0,
 };
 
 /** Donde arranca el texto de TIKTOK: su centro, en px de lienzo. */

@@ -10,15 +10,20 @@ todas en `src/format.ts`, al mismo 3:4 (1080 × 1440) que ellas.
 
 ## NEW, CLASSIC y TIKTOK
 
-Encima de PORTADA / SLIDE se elige el aspecto, que vale **para todo el hilo**:
+Encima de PORTADA / SLIDE se elige el aspecto, **en cada pieza**: cambiarlo
+solo toca la abierta, y un mismo hilo puede mezclar los tres. Una pieza nueva
+arranca con el aspecto de la que estaba abierta.
 
 - **NEW** es lo de abajo: el texto sobre la imagen, con su banda negra y su
   difuminado.
 - **CLASSIC** es lo de antes: una banda blanca arriba con el texto en negro,
   centrado, en SF Pro Display Medium (la del Meme Generator), y la imagen
-  debajo, sin difuminado. Con dos imágenes, la junta es blanca, de 11 px. Las
-  medidas salen de la referencia «Se cumplen 25 años del 11S…»: 79 px de
-  cuerpo, la primera línea a 99 px del filo y la imagen empezando en y = 438.
+  debajo, sin difuminado. Con dos imágenes, la junta es blanca, de 9 px. Las
+  medidas salen de la referencia «Estas historias de amor tuvieron un final que
+  parece imposible»: 84,5 px de cuerpo, la primera línea a 80 px del filo y la
+  imagen empezando en y = 433. **La banda es siempre la de tres líneas**: con
+  una o dos, el texto se centra en ella y la imagen empieza en el mismo sitio
+  en todas las piezas; con más de tres, la banda crece.
 
 En CLASSIC hay un solo texto, el de arriba, con las mismas marcas
 (`*resaltado*` en rojo de partida, `+destacado+` más grande) y la misma barra de
@@ -30,18 +35,25 @@ el texto y la imagen.
 suelto encima, centrado, en TikTok Sans (la letra de la app), a 72 px de partida
 como en la referencia «un random VARIOS días cualquiera:». El texto **se coge y
 se arrastra a cualquier sitio** de la vista previa, sin salirse del lienzo; la
-rueda o el pellizco sobre él cambian su tamaño. En cada pieza hay dos casillas:
+rueda o el pellizco sobre él cambian su tamaño. Como en Photoshop, al pasar cerca
+del centro del lienzo, a lo ancho o a lo alto, se queda pegado y sale una guía
+rosa; seguir arrastrando lo despega. Las guías solo se ven en la previa. En cada pieza hay dos casillas:
 
 - **Trazo**: borde negro alrededor de la letra. Los emojis no lo llevan.
 - **Fondo**: una caja redondeada detrás de cada línea, del color del texto, y
-  la letra pasa a negro o blanco, la que se lea mejor (como en la app).
+  la letra pasa a negro o blanco, la que se lea mejor (como en la app). Al marcarlo se
+  quita el trazo; se puede volver a poner a mano.
 
 Las marcas `*resaltado*` y `+destacado+` funcionan igual. El margen lateral
 decide hasta dónde llega cada línea antes de partirse. «↺ TODO POR DEFECTO»
 devuelve también el texto a su sitio.
 
-Cambiar de aspecto devuelve las medidas y los colores de todas las piezas a los
-de partida del nuevo; el texto, los archivos y los encuadres se quedan.
+Cambiar de aspecto devuelve las medidas de esa pieza a las de partida del
+nuevo; el texto, los archivos y los encuadres se quedan.
+
+Los **colores** van por aspecto: cada uno arranca con los suyos (blanco y
+amarillo en NEW y TIKTOK, negro y rojo en CLASSIC), y cambiar un color en una
+pieza lo cambia en todas las de su mismo aspecto.
 
 ## Alineación
 

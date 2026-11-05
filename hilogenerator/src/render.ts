@@ -405,7 +405,7 @@ function mediaScale(size: { width: number; height: number }, zoom: number, area:
  */
 export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions): Layout {
   const style = styleFor(opts.look, opts.kind);
-  const { desc } = ratio(ctx, style);
+  const { cap, desc } = ratio(ctx, style);
   const maxWidth = CANVAS_W - opts.marginSide * 2;
 
   if (style.layout === "free") return freeLayout(ctx, opts, style, desc, maxWidth);
@@ -433,7 +433,13 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
   if (hasTop && topSpec) {
     const f = fit(ctx, style, topSpec, opts.bigScale, maxWidth, maxHeight);
     if (f.composed.lines.length > 0) {
-      const y = opts.marginTop;
+      // El hueco que la banda reserva siempre (CLASSIC: tres lineas). Si el
+      // texto ocupa menos, se centra en el; si ocupa mas, manda el texto.
+      const capH = cap * f.size;
+      const slot =
+        style.minLines > 0 ? capH + (style.minLines - 1) * (style.gapEm * f.size + capH) : 0;
+      const height = Math.max(slot, f.composed.height);
+      const y = opts.marginTop + (height - f.composed.height) / 2;
       top = {
         lines: f.composed.lines,
         baselines: f.composed.baselines.map((b) => y + b),
@@ -444,7 +450,9 @@ export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions
       };
       // Las descendentes cuentan solo donde las hay: la portada va en caja alta.
       const tail = style.upper ? 0 : desc * f.size;
-      bandTop = Math.round(Math.min(CANVAS_H - MEDIA_MIN_H, top.bottom + tail + opts.bandPad));
+      bandTop = Math.round(
+        Math.min(CANVAS_H - MEDIA_MIN_H, opts.marginTop + height + tail + opts.bandPad),
+      );
     }
   }
 
