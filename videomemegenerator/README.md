@@ -13,8 +13,11 @@ rótulo, el de abajo va pegado al filo inferior del vídeo—, y el bloque de ar
 va 52 px más alto que en el PSD. El logo y los filetes no se mueven.
 
 **Todo ocurre en el navegador.** No hay servidor y no hay nada que instalar: el
-montaje lo hace una build de ffmpeg compilada a WebAssembly, así que la página
-publicada funciona sola.
+montaje lo hace el codificador de vídeo del propio navegador, con la tarjeta
+gráfica, así que la página publicada funciona sola. Un clip de 10 s se monta en
+unos 3 s. Si el navegador no puede con un vídeo, se monta con ffmpeg compilado
+a WebAssembly, que lo abre todo pero tarda bastante más (ver «Cómo se monta el
+MP4»).
 
 ## Uso
 
@@ -65,9 +68,9 @@ publicada funciona sola.
     Se **arrastra sobre la vista previa** para subirlo y bajarlo —solo eso: a
     lo ancho va centrado y punto—, y la rueda o el pellizco le cambian el
     cuerpo, que también tiene su barra.
-11. **GENERA**. La primera vez tarda más porque se descarga el motor de vídeo
-    (unos 30 MB, luego queda en caché). Abajo aparece el resultado con el botón
-    de descarga.
+11. **GENERA**. Abajo aparece el resultado con el botón de descarga. Solo si
+    hay que tirar del motor de respaldo (ffmpeg), la primera vez se descargan
+    unos 30 MB, que luego quedan en caché.
 
 En el móvil aparece una **miniatura flotante** arriba a la derecha, colgada de
 la barra de herramientas, en cuanto hay vídeo: sirve para ir viendo el resultado
@@ -297,6 +300,22 @@ lo que se ve, mida lo que mida y esté donde esté.
 
 ## Cómo se monta el MP4
 
+Hay dos motores, en `../comun/encode.ts`, y montan exactamente lo mismo:
+
+- **El del navegador** (`encode-native.ts`), el que se usa siempre que se
+  puede. Mediabunny abre el archivo —MP4, MOV o WebM— y entrega los fotogramas
+  uno a uno; cada uno se pinta en un lienzo (negro, el vídeo en su rectángulo,
+  la plantilla encima) y el codificador de WebCodecs lo pasa a H.264 con la
+  tarjeta gráfica. El audio AAC se copia tal cual; si es otro, se recodifica a
+  AAC. Medido con un clip de 10 s a 1080 × 1920: **3 s, frente a 160 s con
+  ffmpeg**, con el mismo resultado.
+- **ffmpeg en WebAssembly**, de respaldo. Entra solo cuando el navegador no
+  tiene WebCodecs (Firefox antiguo), no sabe descodificar el original (algún
+  HEVC en Windows) o no sabe codificar su audio. La consola dice cuándo pasa.
+
+Lo de abajo describe el montaje con ffmpeg, que es el de respaldo; el del
+navegador hace lo mismo con un lienzo.
+
 El navegador dibuja la plantilla y el rótulo en un canvas de 1080 × 1920 sobre
 transparente, y ffmpeg lo pega encima del vídeo. **La previa y la pieza final
 salen del mismo dibujo**, así que lo que se ve es literalmente lo que se monta;
@@ -379,7 +398,7 @@ euro.
 | `src/assets/` | La plantilla del PSD y la SF Pro. |
 | `src/format.ts` | Las medidas del PSD, la tipografía y la paleta. Es lo único que hay que tocar para cambiar el diseño. |
 | `src/render.ts` | El ajuste del rótulo y del CTA, y el dibujo sobre el lienzo. No toca el DOM. |
-| `../comun/encode.ts` | ffmpeg en WebAssembly: de la plantilla y el rectángulo al MP4. Lo comparte con el hilo. |
+| `../comun/encode.ts` · `encode-native.ts` | El motor: de la plantilla y el rectángulo al MP4, con el codificador del navegador o, de respaldo, con ffmpeg. Lo comparte con el hilo. |
 | `src/main.ts` | La interfaz: carga del vídeo, encuadre, colores, CTA y descarga. |
 | `../comun/` | Lo que comparten las tres: la piel, la barra de herramientas y la consulta a LanguageTool. |
 

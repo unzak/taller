@@ -10,11 +10,14 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "license": "MIT",
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
-    "@ffmpeg/util": "^0.12.2"
+    "@ffmpeg/util": "^0.12.2",
+    "mediabunny": "1.62.1"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

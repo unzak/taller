@@ -183,7 +183,28 @@ function args(input: string, audio: "copy" | "aac", job: EncodeJob): string[] {
   ];
 }
 
+/**
+ * Monta la pieza. Primero con el codificador del navegador, que usa la
+ * tarjeta grafica y es varias veces mas rapido; si este navegador no puede
+ * con el video, con ffmpeg, que es lento pero lo abre todo. Los dos montan
+ * exactamente lo mismo: el video en su rectangulo y la plantilla encima.
+ */
 export async function encode(job: EncodeJob, handlers: EncodeHandlers): Promise<Blob> {
+  try {
+    // Se carga al exportar, no al abrir la pagina: es codigo que solo hace
+    // falta en ese momento.
+    const { encodeNative } = await import("./encode-native.js");
+    const blob = await encodeNative(job, handlers);
+    if (blob) return blob;
+  } catch (e) {
+    console.warn("[encode] El codificador del navegador falló; se monta con ffmpeg.", e);
+  }
+  handlers.onProgress(0);
+  return encodeFfmpeg(job, handlers);
+}
+
+/** El motor de siempre: ffmpeg en WebAssembly, a un solo hilo. */
+export async function encodeFfmpeg(job: EncodeJob, handlers: EncodeHandlers): Promise<Blob> {
   const ff = await engine(handlers);
   const input = `in.${extension(job.source.name)}`;
 

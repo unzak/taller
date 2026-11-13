@@ -37,7 +37,7 @@ claros. Son tres proyectos que comparten piel, no una librería con tres pieles.
 | `comun/piel.css` | Lo que era **byte a byte igual** en las tres hojas: la paleta del panel Pulso Viral, la barra de herramientas, la cabecera, los paneles, los campos y el cuadro de la revisión. |
 | `comun/nav.ts` | La lista de herramientas y el menú que las enlaza. Añadir otra es tocar `TOOLS` y nada más: así entró el hilo. |
 | `comun/historial.ts` · `historial.css` | El historial: cada herramienta guarda sola lo que se está haciendo, en el propio navegador (IndexedDB), con sus imágenes y vídeos. Volver atrás o recargar lo recupera, y debajo de cada una quedan los 10 últimos trabajos para abrirlos o borrarlos. Nada sale del equipo. |
-| `comun/encode.ts` | El motor de vídeo, ffmpeg en WebAssembly. Lo usan el vídeo meme y el hilo, cada uno con su lienzo. |
+| `comun/encode.ts` · `encode-native.ts` | El motor de vídeo. Monta con el codificador del propio navegador (WebCodecs, vía Mediabunny), que usa la tarjeta gráfica y tarda unos segundos; si el navegador no puede con un vídeo, con ffmpeg en WebAssembly, que lo abre todo pero es unas 50 veces más lento. Lo usan el vídeo meme y el hilo, cada uno con su lienzo. |
 | `comun/spell.ts` | La consulta a LanguageTool, que estaba idéntica en los tres repositorios. |
 | `comun/portada.ts` · `portada.css` · `favicon.svg` | La portada del taller, que es lo que hay en la raíz del sitio. |
 
@@ -84,8 +84,8 @@ cada una por separado, y es lo que ha permitido moverlas de sitio sin tocar la
 configuración.
 
 Los trozos comunes salen **una sola vez**: `nav` y `spell` quedan en su propio
-fragmento y todas lo comparten. Y ffmpeg sigue estando solo en las dos que
-montan vídeo, que son las únicas que lo importan.
+fragmento y todas lo comparten. Y el motor de vídeo —Mediabunny y ffmpeg— solo
+se carga al exportar un vídeo, en las dos que lo montan.
 
 El workflow de `.github/workflows` despliega a Pages en cada push a `main`.
 

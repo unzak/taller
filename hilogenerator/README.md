@@ -131,8 +131,8 @@ Como en News Maker: con una ya puesta, «Añadir nueva imagen» parte la ventana
 en dos, mitad y mitad, con una raya negra en la junta. Cada una se encuadra por
 su cuenta, y el zoom y el volteo le hablan a la última que se haya tocado.
 
-Una de las dos puede ser un vídeo, pero **solo una**: ffmpeg monta un vídeo con
-una capa encima, y la imagen fija de la otra mitad viaja en esa capa.
+Una de las dos puede ser un vídeo, pero **solo una**: el motor monta un vídeo
+con una capa encima, y la imagen fija de la otra mitad viaja en esa capa.
 
 ## Mosca
 
@@ -166,8 +166,10 @@ archivos ni la posición de la mosca.
 
 Las mismas herramientas que el Video Meme Generator, y el mismo motor
 (`comun/encode.ts`): reproducir la previa, elegir fotograma, **recortar** el
-tramo, **voltear** y montar el MP4 en el navegador con ffmpeg. Una pieza con
-vídeo sale en MP4; el resto, en PNG.
+tramo, **voltear** y montar el MP4 en el navegador. Se monta con el codificador
+del propio navegador, con la tarjeta gráfica (unos segundos por pieza), y con
+ffmpeg de respaldo si el navegador no puede con ese vídeo. Una pieza con vídeo
+sale en MP4; el resto, en PNG.
 
 ## Generar
 
