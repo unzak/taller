@@ -24,15 +24,12 @@ export interface Font {
   weight: number;
 }
 
-export type Kind = "portada" | "slide";
-
 /**
- * El aspecto del hilo entero. NEW es el de ahora: el texto sobre la imagen,
- * con su banda negra y su difuminado. CLASSIC es el de antes: una banda
- * blanca arriba con el texto en negro, como el Meme Generator, y la imagen
- * debajo.
+ * El aspecto del hilo entero. CLASSIC es una banda blanca arriba con el texto
+ * en negro, como el Meme Generator, y la imagen debajo. TIKTOK es la imagen
+ * entera con el texto suelto encima.
  */
-export type Look = "new" | "classic" | "tiktok";
+export type Look = "classic" | "tiktok";
 
 /**
  * Los emojis van con Noto Color Emoji, la de Google: a color y la misma en
@@ -93,67 +90,6 @@ export interface Style {
   minLines: number;
 }
 
-/**
- * Portada: Anton, sin tracking. Medido sobre la referencia «ES OFICIAL: HABRA
- * HUELGA GENERAL EL 11 DE NOVIEMBRE»: las dos lineas normales miden 890 y 734
- * px de tinta, que con los anchos de la Anton salen las dos a 101 px de cuerpo
- * con el espaciado natural de la fuente; «ES OFICIAL:» mide 675, o sea 169 px,
- * 1,67 veces mas. La ultima baseline cae a 100 px del filo y el negro macizo
- * empieza unos 40 px por encima del texto.
- *
- * Slide: Poppins Bold, la misma que rotula News Maker. «Un fallo impide
- * completar la» mide 935 px, que son 64 px de cuerpo sin tracking; baselines
- * cada 90 px, o sea 45 de mayuscula y otros 45 de aire. Ultima baseline a 152
- * px del filo y 125 de negro macizo sobre el texto.
- */
-export const STYLES: Record<Kind, Style> = {
-  portada: {
-    font: { family: "Anton", stack: `"Anton", ${EMOJI}, Impact, "Arial Narrow", sans-serif`, weight: 400 },
-    upper: true,
-    align: "center",
-    size: 101,
-    sizeMin: 50,
-    sizeMax: 220,
-    gapEm: 0.24,
-    trackingEm: 0,
-    fade: 90,
-    marginBottom: 100,
-    bandPad: 40,
-    arrow: true,
-    marginTop: 120,
-    marginSide: 55,
-    layout: "overlay",
-    background: "#000000",
-    // El grosor de la junta de News Maker, de donde viene la idea, pero en
-    // negro: aqui tiene que fundirse con las bandas.
-    divider: { width: 3, color: "#000000" },
-    colorText: "#ffffff",
-    colorHighlight: "#ffff00",
-    minLines: 0,
-  },
-  slide: {
-    font: { family: "Poppins", stack: `"Poppins", ${EMOJI}, system-ui, sans-serif`, weight: 700 },
-    upper: false,
-    align: "left",
-    size: 64,
-    sizeMin: 30,
-    sizeMax: 110,
-    gapEm: 0.7,
-    trackingEm: 0,
-    fade: 140,
-    marginBottom: 155,
-    bandPad: 124,
-    arrow: false,
-    marginTop: 120,
-    marginSide: 55,
-    layout: "overlay",
-    background: "#000000",
-    divider: { width: 3, color: "#000000" },
-    colorText: "#ffffff",
-    colorHighlight: "#ffff00",
-    minLines: 0,
-  },
-};
 
 /**
  * CLASSIC, medido sobre la referencia «Estas historias de amor tuvieron un
@@ -235,18 +171,15 @@ export const TIKTOK_POS = { x: 540, y: 420 };
  * la app, la caja toma el color del texto y la letra pasa a negro o a blanco,
  * la que se lea sobre ella.
  */
-export const TIKTOK_STROKE = 0.045;
 export const TIKTOK_BOX = { padX: 0.32, padY: 0.2, radius: 0.24 };
 
-/** El estilo de una pieza: lo deciden el aspecto del hilo y su tipo. */
-export function styleFor(look: Look, kind: Kind): Style {
-  if (look === "classic") return CLASSIC;
-  if (look === "tiktok") return TIKTOK;
-  return STYLES[kind];
+/** El estilo de una pieza: lo decide el aspecto del hilo. */
+export function styleFor(look: Look): Style {
+  return look === "tiktok" ? TIKTOK : CLASSIC;
 }
 
 /** Todas las letras que puede pedir el hilo, para cargarlas antes de medir. */
-export const FONTS: Font[] = [STYLES.portada.font, STYLES.slide.font, CLASSIC.font, TIKTOK.font];
+export const FONTS: Font[] = [CLASSIC.font, TIKTOK.font];
 
 /** La de los emojis se carga aparte, cuando aparece uno: pesa mucho. */
 export const EMOJI_FONT = "Noto Color Emoji";

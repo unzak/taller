@@ -11,14 +11,12 @@ import {
   INSET,
   MARGIN_MAX,
   MARGIN_MIN,
-  MARGIN_SIDE_MAX,
   EMOJI_FONT,
   FONTS,
   TIKTOK_POS,
   styleFor,
   ZOOM_MAX,
   ZOOM_MIN,
-  type Kind,
   type Look,
   type Style,
 } from "./format.js";
@@ -52,18 +50,12 @@ const stripEl = need<HTMLDivElement>("strip");
 const moveLeftEl = need<HTMLButtonElement>("move-left");
 const moveRightEl = need<HTMLButtonElement>("move-right");
 const removeEl = need<HTMLButtonElement>("remove");
-const kindEls: Record<Kind, HTMLButtonElement> = {
-  portada: need<HTMLButtonElement>("kind-portada"),
-  slide: need<HTMLButtonElement>("kind-slide"),
-};
 const kindHintEl = need<HTMLParagraphElement>("kind-hint");
 const lookEls: Record<Look, HTMLButtonElement> = {
-  new: need<HTMLButtonElement>("look-new"),
   classic: need<HTMLButtonElement>("look-classic"),
   tiktok: need<HTMLButtonElement>("look-tiktok"),
 };
 const tiktokFieldsEl = need<HTMLDivElement>("tiktok-fields");
-const tkStrokeEl = need<HTMLInputElement>("tk-stroke");
 const tkBoxEl = need<HTMLInputElement>("tk-box");
 const alignEls = {
   center: need<HTMLButtonElement>("align-center"),
@@ -92,8 +84,6 @@ const marginTopEl = need<HTMLInputElement>("margin-top");
 const marginTopValueEl = need<HTMLSpanElement>("margin-top-value");
 const marginBottomEl = need<HTMLInputElement>("margin-bottom");
 const marginBottomValueEl = need<HTMLSpanElement>("margin-bottom-value");
-const marginSideEl = need<HTMLInputElement>("margin-side");
-const marginSideValueEl = need<HTMLSpanElement>("margin-side-value");
 const bandPadEl = need<HTMLInputElement>("band-pad");
 const bandPadValueEl = need<HTMLSpanElement>("band-pad-value");
 const dropEl = need<HTMLDivElement>("drop");
@@ -190,9 +180,8 @@ interface Item {
  * tambien las que no lo estan.
  */
 interface Slide {
-  /** NEW, CLASSIC o TIKTOK. Cada pieza el suyo. */
+  /** CLASSIC o TIKTOK. Cada pieza el suyo. */
   look: Look;
-  kind: Kind;
   text: string;
   size: number;
   /** El apartado del texto superior abierto es el texto superior puesto. */
@@ -218,7 +207,6 @@ interface Slide {
   /** Centrado o a la izquierda. Arranca en lo que pide el estilo. */
   align: "center" | "left";
   /** TIKTOK: trazo negro y caja de fondo, cada uno por su lado. */
-  stroke: boolean;
   box: boolean;
   /** Tramo del video que se exporta. Arranca abarcandolo entero. */
   trim: { start: number; end: number };
@@ -235,16 +223,16 @@ type Colors = Record<Look, { text: string; highlight: string }>;
 
 function defaultColors(): Colors {
   const of = (l: Look) => ({
-    text: styleFor(l, "portada").colorText,
-    highlight: styleFor(l, "portada").colorHighlight,
+    text: styleFor(l).colorText,
+    highlight: styleFor(l).colorHighlight,
   });
-  return { new: of("new"), classic: of("classic"), tiktok: of("tiktok") };
+  return { classic: of("classic"), tiktok: of("tiktok") };
 }
 
 let colors: Colors = defaultColors();
 
 function styleOf(s: Slide): Style {
-  return styleFor(s.look, s.kind);
+  return styleFor(s.look);
 }
 
 /** Las medidas de partida de una pieza, segun su tipo y el aspecto del hilo. */
@@ -260,22 +248,21 @@ function applyDefaults(s: Slide): void {
   s.align = style.align;
 }
 
-function newSlide(kind: Kind, look: Look = "new"): Slide {
+function newSlide(look: Look = "classic"): Slide {
   const thumb = document.createElement("canvas");
   thumb.width = 108;
   thumb.height = 144;
   return {
     look,
-    kind,
     text: "",
-    size: styleFor(look, kind).size,
+    size: styleFor(look).size,
     topOn: false,
     topText: "",
-    topSize: styleFor(look, kind).size,
-    marginBottom: styleFor(look, kind).marginBottom,
-    marginTop: styleFor(look, kind).marginTop,
-    marginSide: styleFor(look, kind).marginSide,
-    bandPad: styleFor(look, kind).bandPad,
+    topSize: styleFor(look).size,
+    marginBottom: styleFor(look).marginBottom,
+    marginTop: styleFor(look).marginTop,
+    marginSide: styleFor(look).marginSide,
+    bandPad: styleFor(look).bandPad,
     bigScale: BIG_SCALE,
     arrow: true,
     items: [],
@@ -293,16 +280,16 @@ function newSlide(kind: Kind, look: Look = "new"): Slide {
       offsetY: 0,
     },
     pos: { ...TIKTOK_POS },
-    stroke: true,
-    box: false,
-    align: styleFor(look, kind).align,
+    // La caja va puesta de partida: TIKTOK sale con fondo blanco, que es el
+    // color de partida de su texto, y la letra en negro para que se lea.
+    box: true,
+    align: styleFor(look).align,
     trim: { start: 0, end: 0 },
     thumb,
   };
 }
 
-// El hilo arranca con su portada. Lo que se añada despues son slides.
-const slides: Slide[] = [newSlide("portada")];
+const slides: Slide[] = [newSlide()];
 let current = 0;
 let busy = false;
 
@@ -332,7 +319,6 @@ function options(s: Slide, placeholder: boolean): RenderOptions {
   loadEmoji(s.text + (s.topOn ? s.topText : ""));
   return {
     look: s.look,
-    kind: s.kind,
     items: s.items.map((it) => ({
       source: it.media.el,
       size: it.media.size,
@@ -353,7 +339,6 @@ function options(s: Slide, placeholder: boolean): RenderOptions {
     colorHighlight: colors[s.look].highlight,
     placeholder,
     pos: s.pos,
-    stroke: s.stroke,
     box: s.box,
     align: s.align,
   };
@@ -403,7 +388,7 @@ async function ensureFonts(): Promise<void> {
 // --- La tira ----------------------------------------------------------------
 
 function label(s: Slide, i: number): string {
-  return `${String(i + 1).padStart(2, "0")} · ${s.kind === "portada" ? "Portada" : "Slide"}`;
+  return String(i + 1).padStart(2, "0");
 }
 
 function showStrip(): void {
@@ -423,7 +408,7 @@ function showStrip(): void {
   add.setAttribute("aria-label", "Añadir una slide");
   add.addEventListener("click", () => {
     // La nueva hereda el aspecto de la abierta: lo normal es seguir igual.
-    slides.push(newSlide("slide", cur().look));
+    slides.push(newSlide(cur().look));
     select(slides.length - 1);
   });
   stripEl.replaceChildren(...items, add);
@@ -465,10 +450,7 @@ function showSlide(): void {
   const s = cur();
   const style = styleOf(s);
 
-  for (const kind of ["portada", "slide"] as const) {
-    kindEls[kind].setAttribute("aria-checked", String(s.kind === kind));
-  }
-  for (const l of ["new", "classic", "tiktok"] as const) {
+  for (const l of ["classic", "tiktok"] as const) {
     lookEls[l].setAttribute("aria-checked", String(s.look === l));
   }
   const look = s.look;
@@ -478,22 +460,17 @@ function showSlide(): void {
   highlightEl.value = colors[look].highlight;
   kindHintEl.textContent = classic
     ? "Banda blanca arriba con el texto en negro y la imagen debajo."
-    : tiktok
-      ? "La imagen entera y el texto suelto encima, como en TikTok."
-      : s.kind === "portada"
-        ? "Todo en mayúsculas, centrado, y con la flecha al pie."
-        : "Tal cual se escriba, alineado a la izquierda.";
+    : "La imagen entera y el texto suelto encima, como en TikTok.";
 
   // CLASSIC y TIKTOK tienen un solo texto: sin texto superior aparte ni margen
   // inferior. En CLASSIC el margen superior pasa a los margenes, que es donde
   // se busca; en TIKTOK no hay margenes de arriba y abajo, ni banda: el texto
   // se coloca arrastrandolo.
-  textNameEl.textContent = look === "new" ? "Texto inferior" : "Texto";
-  topSectionEl.hidden = look !== "new";
-  marginBottomFieldEl.hidden = look !== "new";
+  textNameEl.textContent = "Texto";
+  topSectionEl.hidden = true;
+  marginBottomFieldEl.hidden = true;
   bandPadFieldEl.hidden = tiktok;
   tiktokFieldsEl.hidden = !tiktok;
-  tkStrokeEl.checked = s.stroke;
   tkBoxEl.checked = s.box;
   for (const a of ["center", "left"] as const) {
     alignEls[a].setAttribute("aria-checked", String(s.align === a));
@@ -523,7 +500,7 @@ function showSlide(): void {
   showTime();
 }
 
-for (const l of ["new", "classic", "tiktok"] as const) {
+for (const l of ["classic", "tiktok"] as const) {
   lookEls[l].addEventListener("click", () => {
     const s = cur();
     if (s.look === l) return;
@@ -536,28 +513,7 @@ for (const l of ["new", "classic", "tiktok"] as const) {
   });
 }
 
-for (const kind of ["portada", "slide"] as const) {
-  kindEls[kind].addEventListener("click", () => {
-    const s = cur();
-    if (s.kind === kind) return;
-    s.kind = kind;
-    // Cada tipo tiene su letra y su banda: las medidas de la una no valen
-    // para la otra.
-    s.size = styleFor(s.look, kind).size;
-    s.topSize = styleFor(s.look, kind).size;
-    s.marginBottom = styleFor(s.look, kind).marginBottom;
-    s.bandPad = styleFor(s.look, kind).bandPad;
-    s.align = styleFor(s.look, kind).align;
-    showStrip();
-    showSlide();
-    draw();
-  });
-}
 
-tkStrokeEl.addEventListener("change", () => {
-  cur().stroke = tkStrokeEl.checked;
-  draw();
-});
 for (const a of ["center", "left"] as const) {
   alignEls[a].addEventListener("click", () => {
     const s = cur();
@@ -571,12 +527,6 @@ for (const a of ["center", "left"] as const) {
 tkBoxEl.addEventListener("change", () => {
   const s = cur();
   s.box = tkBoxEl.checked;
-  // Con fondo, fuera el trazo: la caja ya separa el texto de la imagen. Se
-  // puede volver a marcar a mano.
-  if (s.box) {
-    s.stroke = false;
-    tkStrokeEl.checked = false;
-  }
   draw();
 });
 textEl.addEventListener("input", () => {
@@ -613,10 +563,6 @@ marginBottomEl.addEventListener("input", () => {
 });
 marginTopEl.addEventListener("input", () => {
   cur().marginTop = Number(marginTopEl.value);
-  draw();
-});
-marginSideEl.addEventListener("input", () => {
-  cur().marginSide = Number(marginSideEl.value);
   draw();
 });
 topSectionEl.addEventListener("toggle", () => {
@@ -669,12 +615,6 @@ const RESETS: Reset[] = [
     get: (s) => s.marginBottom,
     def: (s) => styleOf(s).marginBottom,
     set: (s, v) => (s.marginBottom = v),
-  },
-  {
-    input: marginSideEl,
-    get: (s) => s.marginSide,
-    def: (s) => styleOf(s).marginSide,
-    set: (s, v) => (s.marginSide = v),
   },
   {
     input: bandPadEl,
@@ -1018,7 +958,7 @@ async function loadFiles(files: File[]): Promise<void> {
   if (!first) return;
   await loadFile(first, cur());
   for (const file of rest) {
-    const s = newSlide("slide", cur().look);
+    const s = newSlide(cur().look);
     slides.push(s);
     await loadFile(file, s);
   }
@@ -1782,7 +1722,6 @@ function draw(): void {
   insetSizeValueEl.textContent = String(Math.round(s.inset.radius * 2));
   marginBottomEl.value = String(s.marginBottom);
   marginTopEl.value = String(s.marginTop);
-  marginSideEl.value = String(s.marginSide);
   const zoom = item(s)?.transform.zoom ?? 1;
   zoomEl.value = String(zoom);
 
@@ -1792,7 +1731,6 @@ function draw(): void {
   bandPadValueEl.textContent = String(Math.round(s.bandPad));
   marginBottomValueEl.textContent = String(Math.round(s.marginBottom));
   marginTopValueEl.textContent = String(Math.round(s.marginTop));
-  marginSideValueEl.textContent = String(Math.round(s.marginSide));
   zoomValueEl.textContent = String(Math.round(zoom * 100));
 
   const parts = [`${layout.width} × ${layout.height} px`];
@@ -1886,7 +1824,7 @@ async function build(s: Slide, i: number): Promise<Result> {
   const opts = options(s, false);
   clampOffset(s);
   const number = String(i + 1).padStart(2, "0");
-  const base = `hilo-${number}${s.kind === "portada" ? "-portada" : ""}`;
+  const base = `hilo-${number}`;
 
   const clip = videoOf(s);
   if (clip) {
@@ -2147,7 +2085,6 @@ fixEl.addEventListener("click", () => {
 interface SavedSlide {
   /** Los hilos de antes no lo traen: toman el del hilo. */
   look?: Look;
-  kind: Kind;
   text: string;
   size: number;
   topOn: boolean;
@@ -2163,7 +2100,6 @@ interface SavedSlide {
   trim: { start: number; end: number };
   /** De TIKTOK. Los hilos de antes no los traen. */
   pos?: { x: number; y: number };
-  stroke?: boolean;
   box?: boolean;
   align?: "center" | "left";
   items: { fileId: string; transform: MediaTransform; flip: boolean }[];
@@ -2206,7 +2142,6 @@ function isEmpty(): boolean {
 function saved(s: Slide): SavedSlide {
   return {
     look: s.look,
-    kind: s.kind,
     text: s.text,
     size: s.size,
     topOn: s.topOn,
@@ -2221,7 +2156,6 @@ function saved(s: Slide): SavedSlide {
     active: s.active,
     trim: { ...s.trim },
     pos: { ...s.pos },
-    stroke: s.stroke,
     box: s.box,
     align: s.align,
     items: s.items.map((it) => ({
@@ -2262,12 +2196,21 @@ function workTitle(): string {
 function replaceSlides(next: Slide[]): void {
   pausePreview();
   for (const s of slides) dropSlide(s);
-  slides.splice(0, slides.length, ...(next.length > 0 ? next : [newSlide("portada")]));
+  slides.splice(0, slides.length, ...(next.length > 0 ? next : [newSlide()]));
   current = 0;
   showStrip();
   for (const s of slides.slice(1)) paintThumb(s);
   showSlide();
   draw();
+}
+
+/**
+ * El aspecto de un hilo guardado. Los que se guardaron en NEW, que ya no
+ * existe, pasan a CLASSIC: es el que mas se le parece de los dos que quedan.
+ */
+function reviveLook(look: Look | "new" | undefined, fallback: Look): Look {
+  if (look === "classic" || look === "tiktok") return look;
+  return fallback;
 }
 
 /** Vuelve a montar una pieza guardada, con sus archivos sacados de la base. */
@@ -2276,7 +2219,7 @@ async function revive(
   getFile: (id: string) => Promise<File | null>,
   look: Look,
 ): Promise<Slide> {
-  const s = newSlide(d.kind, d.look ?? look);
+  const s = newSlide(reviveLook(d.look, look));
   s.text = d.text;
   s.size = d.size;
   s.topOn = d.topOn;
@@ -2290,8 +2233,7 @@ async function revive(
   s.arrow = d.arrow;
   s.trim = { ...d.trim };
   if (d.pos) s.pos = { ...d.pos };
-  s.stroke = d.stroke ?? true;
-  s.box = d.box ?? false;
+  s.box = d.box ?? true;
   s.align = d.align ?? styleOf(s).align;
 
   const load = async (fileId: string): Promise<Media | null> => {
@@ -2349,7 +2291,7 @@ const historico = historial<WorkData>({
     };
   },
   restore: async (data, getFile) => {
-    const look = data.look ?? "new";
+    const look = reviveLook(data.look, "classic");
     colors = defaultColors();
     if (data.colors) {
       Object.assign(colors, data.colors);
@@ -2365,7 +2307,7 @@ const historico = historial<WorkData>({
     // Un hilo nuevo sigue en el aspecto de la pieza que estaba abierta.
     const look = cur().look;
     colors = defaultColors();
-    replaceSlides([newSlide("portada", look)]);
+    replaceSlides([newSlide(look)]);
     setStatus("");
   },
   describe: (data) => {
@@ -2391,8 +2333,6 @@ for (const el of [marginBottomEl, marginTopEl]) {
   el.min = String(MARGIN_MIN);
   el.max = String(MARGIN_MAX);
 }
-marginSideEl.min = String(MARGIN_MIN);
-marginSideEl.max = String(MARGIN_SIDE_MAX);
 zoomEl.min = String(ZOOM_MIN);
 zoomEl.max = String(ZOOM_MAX);
 insetSizeEl.min = String(INSET.radiusMin);

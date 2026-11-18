@@ -55,15 +55,10 @@
     <main class="layout">
       <section class="panel">
         <h2>1 · Tipo</h2>
-        <!-- El aspecto vale para todo el hilo; portada o slide, para cada pieza. -->
-        <div class="seg seg-3" role="radiogroup" aria-label="Aspecto del hilo">
-          <button type="button" class="seg-btn" id="look-new" role="radio">NEW</button>
+        <!-- El aspecto vale para cada pieza del hilo. -->
+        <div class="seg" role="radiogroup" aria-label="Aspecto del hilo">
           <button type="button" class="seg-btn" id="look-classic" role="radio">CLASSIC</button>
           <button type="button" class="seg-btn" id="look-tiktok" role="radio">TIKTOK</button>
-        </div>
-        <div class="seg" role="radiogroup" aria-label="Tipo de pieza">
-          <button type="button" class="seg-btn" id="kind-portada" role="radio">PORTADA</button>
-          <button type="button" class="seg-btn" id="kind-slide" role="radio">SLIDE</button>
         </div>
         <p class="muted small hint" id="kind-hint"></p>
         <!-- Solo en la portada: la slide no lleva flecha. -->
@@ -95,16 +90,10 @@
             Arrastra el texto por la vista previa para colocarlo donde quieras;
             con la rueda o pellizcando cambia de tamaño.
           </p>
-          <div class="checks">
-            <label class="check" for="tk-stroke">
-              <input type="checkbox" id="tk-stroke" checked />
-              Trazo
-            </label>
-            <label class="check" for="tk-box">
-              <input type="checkbox" id="tk-box" />
-              Fondo
-            </label>
-          </div>
+          <label class="check" for="tk-box">
+            <input type="checkbox" id="tk-box" checked />
+            Fondo
+          </label>
         </div>
 
         <div class="field">
@@ -157,14 +146,7 @@
           </label>
           <input type="range" id="margin-bottom" min="30" max="760" step="1" />
         </div>
-        <div class="field">
-          <label for="margin-side">
-            Margen lateral
-            <span class="muted small">· <span id="margin-side-value"></span> px</span>
-          </label>
-          <input type="range" id="margin-side" min="30" max="260" step="1" />
-        </div>
-
+        
         <div class="field">
           <label for="band-pad">
             <span id="band-pad-name">Negro sobre el texto</span>

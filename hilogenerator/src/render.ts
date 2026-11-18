@@ -5,9 +5,7 @@ import {
   CANVAS_W,
   MEDIA_MIN_H,
   TIKTOK_BOX,
-  TIKTOK_STROKE,
   styleFor,
-  type Kind,
   type Look,
   type Style,
 } from "./format.js";
@@ -73,7 +71,6 @@ export interface Inset {
 export interface RenderOptions {
   /** NEW o CLASSIC: lo decide el hilo entero. */
   look: Look;
-  kind: Kind;
   /** Una ocupa toda la ventana; dos se la reparten mitad y mitad. */
   items: MediaItem[];
   /** La mosca, o null si no hay. Su aro va del color del resaltado. */
@@ -103,7 +100,6 @@ export interface RenderOptions {
   /** TIKTOK: el centro del texto, que va suelto sobre la imagen. */
   pos: { x: number; y: number };
   /** TIKTOK: trazo negro alrededor de la letra. */
-  stroke: boolean;
   /** TIKTOK: caja redondeada detras de cada linea. */
   box: boolean;
   /** Centrado o a la izquierda. Arranca en lo que pide cada estilo. */
@@ -404,7 +400,7 @@ function mediaScale(size: { width: number; height: number }, zoom: number, area:
  * que darle el rectangulo del video exactamente igual que en la previa.
  */
 export function computeLayout(ctx: CanvasRenderingContext2D, opts: RenderOptions): Layout {
-  const style = styleFor(opts.look, opts.kind);
+  const style = styleFor(opts.look);
   const { cap, desc } = ratio(ctx, style);
   const maxWidth = CANVAS_W - opts.marginSide * 2;
 
@@ -627,7 +623,7 @@ function drawItems(
     ctx.rect(col.x, col.y, col.w, col.h);
     ctx.clip();
     if (plate) {
-      ctx.fillStyle = styleFor(opts.look, opts.kind).background;
+      ctx.fillStyle = styleFor(opts.look).background;
       ctx.fillRect(col.x, col.y, col.w, col.h);
     }
     ctx.imageSmoothingEnabled = true;
@@ -740,7 +736,7 @@ export function render(ctx: CanvasRenderingContext2D, opts: RenderOptions): Layo
   const layout = computeLayout(ctx, opts);
   prepare(ctx, layout);
 
-  ctx.fillStyle = styleFor(opts.look, opts.kind).background;
+  ctx.fillStyle = styleFor(opts.look).background;
   ctx.fillRect(0, 0, layout.width, layout.height);
 
   if (opts.items.length > 0) {
@@ -803,7 +799,7 @@ function drawPlate(
   layout: Layout,
   withImages: boolean,
 ): void {
-  const style = styleFor(opts.look, opts.kind);
+  const style = styleFor(opts.look);
 
   // En la capa de ffmpeg las imagenes fijas van aqui: debajo solo corre el
   // video, y lo que este se salga de su mitad lo tapa la imagen de al lado.
@@ -896,22 +892,6 @@ function drawBlock(
   });
 }
 
-/** Un emoji, o una bandera, que van con su propia letra y a color. */
-const EMOJI_RE = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
-const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-
-/** Parte un texto en tramos de letra y tramos de emoji. */
-function runs(text: string): { text: string; emoji: boolean }[] {
-  const out: { text: string; emoji: boolean }[] = [];
-  for (const { segment } of graphemes.segment(text)) {
-    const emoji = EMOJI_RE.test(segment);
-    const last = out[out.length - 1];
-    if (last && last.emoji === emoji) last.text += segment;
-    else out.push({ text: segment, emoji });
-  }
-  return out;
-}
-
 /** Negro o blanco, el que se lea mejor sobre `hex`. */
 function contrast(hex: string): string {
   const n = Number.parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16);
@@ -921,8 +901,7 @@ function contrast(hex: string): string {
 
 /**
  * El texto de TIKTOK: cada linea centrada en `cx`, con su caja detras si hay
- * fondo y con trazo negro si se pide. El trazo se salta los emojis: alrededor
- * de un dibujo a color queda un borde sucio, y en la app tampoco lo llevan.
+ * fondo. Con caja, la letra pasa al color que se lea sobre ella.
  */
 function drawFree(
   ctx: CanvasRenderingContext2D,
@@ -973,16 +952,6 @@ function drawFree(
       if (!token.space) {
         const px = size * token.scale;
         setFont(ctx, style, px);
-        if (opts.stroke) {
-          ctx.lineWidth = TIKTOK_STROKE * px * 2;
-          ctx.lineJoin = "round";
-          ctx.strokeStyle = "#000000";
-          let sx = x;
-          for (const run of runs(token.text)) {
-            if (!run.emoji) ctx.strokeText(run.text, sx, baseline);
-            sx += ctx.measureText(run.text).width;
-          }
-        }
         ctx.fillStyle = token.highlight ? opts.colorHighlight : plain;
         ctx.fillText(token.text, x, baseline);
       }
