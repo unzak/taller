@@ -24,6 +24,47 @@ export const FONT_SIZE_MAX = 84;
 export const LINE_RATIO = 1.25;
 
 /**
+ * Los dos tipos de pieza. `classic` es la de siempre: banda con el texto y la
+ * foto debajo. `new` le pone encima la cabecera de la casa, logo centrado con
+ * su filete partido a los lados.
+ */
+export type Kind = "classic" | "new";
+
+/*
+ * Medidas de la cabecera del tipo NEW, tomadas sobre la referencia de
+ * 1080x1350 y no inventadas. Si cambia la plantilla, volver a medir sobre ella.
+ */
+
+/** Alto del logo. En la referencia ocupa de y=24 a y=143. */
+export const NEW_LOGO_TOP = 24;
+export const NEW_LOGO_H = 120;
+
+/**
+ * El filete son dos lineas finas, medidas en y=89 y y=97, que arrancan en
+ * x=39 y mueren simetricas al otro lado. Se cortan 20 px antes del logo.
+ */
+export const NEW_RULE_X = 39;
+export const NEW_RULE_Y1 = 89;
+export const NEW_RULE_Y2 = 97;
+export const NEW_RULE_H = 3;
+export const NEW_RULE_GAP = 20;
+
+/**
+ * Aire sobre y bajo el bloque de texto. No son iguales a proposito: arriba hay
+ * que dejar sitio al logo y al filete. Salen de la referencia, donde con tres
+ * lineas el texto arranca en y=168 y la foto en y=424.
+ */
+export const NEW_PAD_TOP = 152;
+export const NEW_PAD_BOTTOM = 18;
+
+/** En la referencia el cuerpo mide 72 y las lineas caen cada 85 px. */
+export const NEW_FONT_SIZE = 72;
+export const NEW_LINE_RATIO = 85 / 72;
+
+/** El rosa del logo y del filete, medido sobre la referencia: #cc1c65. */
+export const COLOR_RULE = "#cc1c65";
+
+/**
  * Altura de mayusculas como fraccion del cuerpo. Sirve para centrar cada linea
  * dentro de su caja sin depender de las metricas de la fuente, que cambian de
  * una familia a otra.

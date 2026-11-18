@@ -3,9 +3,21 @@ import {
   CANVAS_H,
   CANVAS_W,
   CAP_RATIO,
+  COLOR_RULE,
   LINE_RATIO,
+  NEW_LINE_RATIO,
+  NEW_LOGO_H,
+  NEW_LOGO_TOP,
+  NEW_PAD_BOTTOM,
+  NEW_PAD_TOP,
+  NEW_RULE_GAP,
+  NEW_RULE_H,
+  NEW_RULE_X,
+  NEW_RULE_Y1,
+  NEW_RULE_Y2,
   TEXT_MAX_W,
   type Font,
+  type Kind,
 } from "./format.js";
 
 /** Un trozo de texto con su color. Lo que va entre *asteriscos* se resalta. */
@@ -26,6 +38,10 @@ export interface RenderOptions {
   photo: CanvasImageSource | null;
   photoSize: { width: number; height: number } | null;
   transform: PhotoTransform;
+  kind: Kind;
+  /** El logo de la cabecera. Solo se usa en el tipo `new`. */
+  logo: CanvasImageSource | null;
+  logoSize: { width: number; height: number } | null;
   text: string;
   align: Align;
   font: Font;
@@ -146,6 +162,8 @@ export interface Layout {
   height: number;
   /** Alto de la banda. 0 cuando no hay texto: entonces sale la foto sola. */
   bandH: number;
+  /** Aire sobre el bloque de texto. En `new` ahi va la cabecera. */
+  padTop: number;
   /** Tamaño de letra con el que se ha compuesto. */
   fontSize: number;
   lineHeight: number;
@@ -165,15 +183,25 @@ export function computeLayout(
   ctx: CanvasRenderingContext2D,
   opts: RenderOptions,
 ): Layout {
+  const nuevo = opts.kind === "new";
   const fontSize = opts.fontSize;
   setFont(ctx, opts.font, fontSize);
   const lines = layoutLines(ctx, tokenize(parseSegments(opts.text)), TEXT_MAX_W);
-  const lineHeight = fontSize * LINE_RATIO;
+  const lineHeight = fontSize * (nuevo ? NEW_LINE_RATIO : LINE_RATIO);
+
+  // Arriba y abajo no miden igual en el tipo `new`: la cabecera se come el
+  // margen de arriba. En `classic` los dos son el mismo y el texto queda
+  // centrado en su banda.
+  const padTop = nuevo ? NEW_PAD_TOP : BAND_PAD_Y;
+  const padBottom = nuevo ? NEW_PAD_BOTTOM : BAND_PAD_Y;
+
   // Manda el tamaño de letra: la banda se adapta a lo que ocupe el texto. El
-  // unico tope es el propio lienzo, que no se mueve.
+  // unico tope es el propio lienzo, que no se mueve. En `new` la cabecera va
+  // siempre, asi que la banda nunca desaparece del todo.
+  const textH = lines.length * lineHeight;
   const bandH =
-    lines.length > 0
-      ? Math.min(CANVAS_H, Math.round(BAND_PAD_Y * 2 + lines.length * lineHeight))
+    lines.length > 0 || nuevo
+      ? Math.min(CANVAS_H, Math.round(padTop + textH + padBottom))
       : 0;
 
   // El lienzo no se mueve: lo que la banda ocupa se lo quita a la foto.
@@ -197,6 +225,7 @@ export function computeLayout(
     width: CANVAS_W,
     height: CANVAS_H,
     bandH,
+    padTop,
     fontSize,
     lineHeight,
     lines,
@@ -266,6 +295,8 @@ function drawBand(
   ctx.fillStyle = opts.colorBand;
   ctx.fillRect(0, 0, layout.width, layout.bandH);
 
+  if (opts.kind === "new") drawHead(ctx, opts);
+
   setFont(ctx, opts.font, layout.fontSize);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
@@ -282,7 +313,7 @@ function drawBand(
     if (line.length === 0) return;
     // Cada linea se centra dentro de su caja, y el bloque queda centrado en la
     // banda porque los margenes de arriba y abajo son iguales.
-    const baseline = BAND_PAD_Y + i * layout.lineHeight + layout.lineHeight / 2 + cap / 2;
+    const baseline = layout.padTop + i * layout.lineHeight + layout.lineHeight / 2 + cap / 2;
     let x = opts.align === "left" ? blockX : (layout.width - (widths[i] ?? 0)) / 2;
     for (const token of line) {
       ctx.fillStyle = token.highlight ? opts.colorHighlight : opts.colorText;
@@ -290,4 +321,34 @@ function drawBand(
       x += ctx.measureText(token.text).width;
     }
   });
+}
+
+/**
+ * La cabecera del tipo `new`: el logo centrado y su filete, dos lineas finas
+ * que mueren a los lados dejando aire alrededor del logo.
+ *
+ * El logo se escala por el alto y el ancho lo pone su propia proporcion: la
+ * referencia esta comprimida y medirle el ancho al pixel no sale a cuenta.
+ */
+function drawHead(ctx: CanvasRenderingContext2D, opts: RenderOptions): void {
+  const mid = CANVAS_W / 2;
+
+  let logoW = 0;
+  if (opts.logo && opts.logoSize && opts.logoSize.height > 0) {
+    logoW = (opts.logoSize.width * NEW_LOGO_H) / opts.logoSize.height;
+    ctx.drawImage(opts.logo, mid - logoW / 2, NEW_LOGO_TOP, logoW, NEW_LOGO_H);
+  }
+
+  // El filete arranca en el margen y se para antes del logo. Sin logo cargado
+  // cruza entero, que es lo que toca: no hay nada que esquivar.
+  const stop = logoW > 0 ? mid - logoW / 2 - NEW_RULE_GAP : mid;
+  const from = NEW_RULE_X;
+  if (stop <= from) return;
+
+  ctx.fillStyle = COLOR_RULE;
+  for (const y of [NEW_RULE_Y1, NEW_RULE_Y2]) {
+    ctx.fillRect(from, y, stop - from, NEW_RULE_H);
+    // El otro lado es el espejo, asi el conjunto queda centrado en el lienzo.
+    ctx.fillRect(CANVAS_W - stop, y, stop - from, NEW_RULE_H);
+  }
 }

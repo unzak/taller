@@ -8,8 +8,10 @@ import {
   FONT_SIZE,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
+  NEW_FONT_SIZE,
   ZOOM_MAX,
   ZOOM_MIN,
+  type Kind,
 } from "./format.js";
 import {
   clampPhotoOffset,
@@ -21,6 +23,7 @@ import {
 import { historial, newId, thumbnail } from "../../comun/historial.js";
 import { nav } from "../../comun/nav.js";
 import { applyFixes, check, type Issue } from "../../comun/spell.js";
+import logoUrl from "./assets/logo-cabronazi.png";
 import "./style.css";
 
 // La barra de las tres, lo primero: el hueco ya tiene su alto reservado en la
@@ -34,6 +37,7 @@ function need<T extends Element>(id: string): T {
 }
 
 const textEl = need<HTMLTextAreaElement>("text");
+const kindEl = need<HTMLSelectElement>("kind");
 const alignEl = need<HTMLSelectElement>("align");
 const sizeEl = need<HTMLInputElement>("size");
 const sizeValueEl = need<HTMLSpanElement>("size-value");
@@ -83,6 +87,8 @@ interface State {
   /** El archivo original y su id: lo que el historial guarda para volver a el. */
   photoFile: { id: string; file: File } | null;
   transform: PhotoTransform;
+  /** El logo de la cabecera del tipo `new`. Se carga una vez al arrancar. */
+  logo: HTMLImageElement | null;
 }
 
 const state: State = {
@@ -91,6 +97,7 @@ const state: State = {
   photoName: "",
   photoFile: null,
   transform: { zoom: 1, offsetX: 0, offsetY: 0 },
+  logo: null,
 };
 
 function options(): RenderOptions {
@@ -98,6 +105,11 @@ function options(): RenderOptions {
     photo: state.photo,
     photoSize: state.photoSize,
     transform: state.transform,
+    kind: kindEl.value === "new" ? "new" : "classic",
+    logo: state.logo,
+    logoSize: state.logo
+      ? { width: state.logo.naturalWidth, height: state.logo.naturalHeight }
+      : null,
     text: textEl.value,
     align: alignEl.value === "left" ? "left" : "center",
     font: FONT,
@@ -659,6 +671,21 @@ const historico = historial<WorkData>({
   onError: (message) => setStatus(message, "error"),
 });
 
+// --- Tipo de pieza ---------------------------------------------------------
+
+/**
+ * Cada tipo trae su cuerpo de letra: en la referencia del `new` el texto mide
+ * 72 y en el `classic` 52. Se cambia solo al cambiar de tipo, pero el
+ * deslizador sigue mandando despues.
+ */
+const SIZE_BY_KIND: Record<Kind, number> = { classic: FONT_SIZE, new: NEW_FONT_SIZE };
+
+kindEl.addEventListener("change", () => {
+  const kind: Kind = kindEl.value === "new" ? "new" : "classic";
+  sizeEl.value = String(SIZE_BY_KIND[kind]);
+  draw();
+});
+
 // --- Arranque --------------------------------------------------------------
 
 textEl.value = "";
@@ -667,6 +694,15 @@ previewEl.width = CANVAS_W;
 bandEl.value = COLOR_BAND;
 textColorEl.value = COLOR_TEXT;
 highlightEl.value = COLOR_HIGHLIGHT;
+// El logo no frena el arranque: si tarda o falla, se dibuja sin el y se
+// repinta en cuanto llegue.
+void loadImage(logoUrl)
+  .then((img) => {
+    state.logo = img;
+    draw();
+  })
+  .catch(() => setStatus("No se pudo cargar el logo de la cabecera.", "error"));
+
 void ensureFont().then(async () => {
   draw();
   await historico.start();
