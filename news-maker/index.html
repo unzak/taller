@@ -63,9 +63,9 @@
         </div>
 
         <h2>2 · Imagen</h2>
-        <div id="drop" class="drop">
+        <div id="drop" class="drop" tabindex="0" data-image-target="photo" aria-label="Imagen principal: arrastra o pega una foto">
           <input type="file" id="file" accept="image/*" hidden />
-          <p><strong>Arrastra una foto aquí</strong></p>
+          <p><strong>Arrastra una foto o pégala con Ctrl+V / ⌘V</strong></p>
           <p class="muted">o</p>
           <button type="button" id="pick" class="btn-secondary">Elegir archivo…</button>
           <p class="muted small" id="file-name">Ningún archivo seleccionado</p>
@@ -80,7 +80,9 @@
           La segunda imagen: la noticia pasa a llevar dos, mitad y mitad, y
           cada una se encuadra por su cuenta igual que cuando va sola.
         -->
-        <div class="field">
+        <div id="drop-photo2" class="drop drop-sm field" tabindex="0" data-image-target="photo2" aria-label="Segunda imagen: arrastra o pega una foto">
+          <p><strong>Segunda foto · opcional</strong></p>
+          <p class="muted small">Arrástrala aquí o pulsa aquí y pégala con Ctrl+V / ⌘V.</p>
           <input type="file" id="file2" accept="image/*" hidden />
           <button type="button" id="add-photo" class="btn-secondary">
             Añadir nueva imagen
@@ -100,9 +102,10 @@
         </div>
 
         <h2>3 · Mosca <span class="muted small">· opcional</span></h2>
-        <div id="drop-inset" class="drop drop-sm">
+        <div id="drop-inset" class="drop drop-sm" tabindex="0" data-image-target="inset" aria-label="Mosca: arrastra o pega una foto">
           <input type="file" id="file-inset" accept="image/*" hidden />
-          <p><strong>Arrastra la segunda imagen</strong></p>
+          <p><strong>Arrastra la imagen de la mosca</strong></p>
+          <p class="muted small">O pulsa aquí y pégala con Ctrl+V / ⌘V.</p>
           <p class="muted">o</p>
           <button type="button" id="pick-inset" class="btn-secondary">Elegir archivo…</button>
           <p class="muted small" id="file-inset-name">Sin mosca</p>

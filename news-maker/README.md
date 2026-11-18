@@ -8,7 +8,13 @@ escribes el titular, y produce el PNG **1080 × 1350** listo para publicar.
 1. Elige la **vertical**. Cambia el logo central por el distintivo de esa
    cuenta y tiñe el halo de los filetes con su color; Cabronazi viene puesto
    por defecto.
-2. Arrastra una foto (o elígela con el botón).
+2. Arrastra una foto, elígela con el botón o pégala con **Ctrl+V / ⌘V**.
+   Para pegar en la segunda foto o en la mosca, pulsa antes su recuadro (también
+   puedes enfocarlo con Tab). Fuera de estos recuadros, una imagen pegada o un
+   archivo arrastrado carga la foto principal. El texto se sigue pegando en el
+   titular con normalidad. Añade la foto principal antes de la segunda.
+   También puedes arrastrar imágenes desde otra pestaña si su servidor permite
+   cargarlas. Si lo bloquea, usa «Copiar imagen» y pega, o elige el archivo.
 3. Ajusta el encuadre: el deslizador hace zoom, y arrastrando sobre la vista
    previa mueves la imagen.
 4. Si quieres **mosca**, añade la segunda imagen: sale recortada en circulo con

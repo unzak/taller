@@ -310,21 +310,113 @@ photo2RemoveEl.addEventListener("click", () => {
   draw();
 });
 
-for (const evt of ["dragenter", "dragover"] as const) {
-  dropEl.addEventListener(evt, (e) => {
-    e.preventDefault();
-    dropEl.classList.add("over");
+/** El destino lo decide la zona enfocada; fuera de ellas se carga la foto principal. */
+function imageTarget(element: EventTarget | null): "photo" | "photo2" | "inset" {
+  const zone = element instanceof Element ? element.closest<HTMLElement>("[data-image-target]") : null;
+  if (zone?.dataset.imageTarget === "inset") return "inset";
+  if (zone?.dataset.imageTarget === "photo2") return "photo2";
+  return "photo";
+}
+
+function transferImage(data: DataTransfer | null): File | null {
+  if (!data) return null;
+  for (const item of data.items) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) return file;
+    }
+  }
+  return Array.from(data.files).find((file) => file.type.startsWith("image/")) ?? null;
+}
+
+function useTransferredImage(file: File, target: ReturnType<typeof imageTarget>): void {
+  if (target === "inset") {
+    void useInsetFile(file);
+  } else if (target === "photo2") {
+    if (!photos[0]) {
+      setStatus("Añade primero la imagen principal.", "error");
+      return;
+    }
+    void useFile(file, 1);
+  } else {
+    void useFile(file, 0);
+  }
+}
+
+/** Las imágenes arrastradas desde otra pestaña suelen llegar como HTML, no como archivo. */
+function draggedImageUrl(data: DataTransfer): string | null {
+  const html = data.getData("text/html");
+  const src = html ? new DOMParser().parseFromString(html, "text/html").querySelector("img")?.getAttribute("src") : null;
+  const uri = data.getData("text/uri-list").split(/\r?\n/).find((line) => line && !line.startsWith("#"));
+  const value = src || (uri && /\.(?:png|jpe?g|gif|webp|avif|bmp|svg)(?:[?#]|$)/i.test(uri) ? uri : null);
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+async function useDraggedImageUrl(url: string, target: ReturnType<typeof imageTarget>): Promise<void> {
+  try {
+    const response = await fetch(url, { credentials: "omit" });
+    if (!response.ok) throw new Error("Imagen no disponible");
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/")) throw new Error("No es una imagen");
+    const name = new URL(url).pathname.split("/").pop() || "imagen-arrastrada";
+    useTransferredImage(new File([blob], name, { type: blob.type }), target);
+  } catch {
+    setStatus("No se pudo cargar esa imagen. Usa «Copiar imagen» y pégala con Ctrl+V / ⌘V, o elige un archivo.", "error");
+  }
+}
+
+// El evento nativo permite Ctrl+V/Cmd+V sin pedir acceso general al portapapeles.
+document.addEventListener("paste", (event) => {
+  const file = transferImage(event.clipboardData);
+  if (!file) return; // El texto sigue pegándose normalmente en el titular.
+  event.preventDefault();
+  useTransferredImage(file, imageTarget(event.target));
+});
+
+for (const zone of [dropEl, need<HTMLDivElement>("drop-photo2"), dropInsetEl]) {
+  zone.addEventListener("pointerdown", (event) => {
+    if (event.target instanceof Element && !event.target.closest("button, input")) zone.focus();
+  });
+  for (const name of ["dragenter", "dragover"] as const) {
+    zone.addEventListener(name, (event) => {
+      if (!event.dataTransfer?.types.some((type) => ["Files", "text/html", "text/uri-list"].includes(type))) return;
+      event.preventDefault();
+      zone.classList.add("over");
+    });
+  }
+  zone.addEventListener("dragleave", (event) => {
+    if (!(event.relatedTarget instanceof Node) || !zone.contains(event.relatedTarget)) {
+      zone.classList.remove("over");
+    }
   });
 }
-for (const evt of ["dragleave", "drop"] as const) {
-  dropEl.addEventListener(evt, (e) => {
-    e.preventDefault();
-    dropEl.classList.remove("over");
-  });
-}
-dropEl.addEventListener("drop", (e) => {
-  const file = e.dataTransfer?.files?.[0];
-  if (file) void useFile(file, 0);
+
+// Evita que soltar un archivo fuera del recuadro sustituya la página del editor.
+document.addEventListener("dragover", (event) => {
+  const types = event.dataTransfer?.types ?? [];
+  const inZone = event.target instanceof Element && event.target.closest("[data-image-target]");
+  if (!types.includes("Files") && !(inZone && types.some((type) => ["text/html", "text/uri-list"].includes(type)))) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+});
+document.addEventListener("drop", (event) => {
+  document.querySelectorAll(".drop.over").forEach((zone) => zone.classList.remove("over"));
+  const data = event.dataTransfer;
+  if (!data) return;
+  const file = transferImage(data);
+  const url = file ? null : draggedImageUrl(data);
+  if (!file && !url && !data.files.length) return;
+  event.preventDefault();
+  const target = imageTarget(event.target);
+  if (file) useTransferredImage(file, target);
+  else if (url) void useDraggedImageUrl(url, target);
+  else setStatus("Ese archivo no es una imagen.", "error");
 });
 
 /* ---------- reencuadre ---------- */
@@ -610,23 +702,6 @@ async function useInsetFile(file: File, id = newId()): Promise<void> {
 pickInsetEl.addEventListener("click", () => fileInsetEl.click());
 fileInsetEl.addEventListener("change", () => {
   const file = fileInsetEl.files?.[0];
-  if (file) void useInsetFile(file);
-});
-
-for (const evt of ["dragenter", "dragover"] as const) {
-  dropInsetEl.addEventListener(evt, (e) => {
-    e.preventDefault();
-    dropInsetEl.classList.add("over");
-  });
-}
-for (const evt of ["dragleave", "drop"] as const) {
-  dropInsetEl.addEventListener(evt, (e) => {
-    e.preventDefault();
-    dropInsetEl.classList.remove("over");
-  });
-}
-dropInsetEl.addEventListener("drop", (e) => {
-  const file = e.dataTransfer?.files?.[0];
   if (file) void useInsetFile(file);
 });
 
