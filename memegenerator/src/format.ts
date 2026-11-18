@@ -102,6 +102,22 @@ export const FONT: Font = {
   weight: 500,
 };
 
+/**
+ * La del tipo `new`: la misma familia en Heavy. Se eligio midiendo las tres
+ * lineas de la referencia a 72 px, no a ojo — ver el comentario del
+ * `@font-face` en `style.css`.
+ */
+export const FONT_NEW: Font = {
+  family: "SF Pro Display",
+  stack: '"SF Pro Display", system-ui, sans-serif',
+  weight: 900,
+};
+
+/** La tipografia que le toca a cada tipo de pieza. */
+export function fontFor(kind: Kind): Font {
+  return kind === "new" ? FONT_NEW : FONT;
+}
+
 
 export interface Swatch {
   label: string;

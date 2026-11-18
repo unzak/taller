@@ -19,6 +19,20 @@
   font-display: swap;
 }
 
+/*
+ * La Heavy es la del tipo `new`. Se eligio midiendo, no a ojo: con el texto de
+ * la referencia a 72 px sus tres lineas miden 929, 886 y 480 px contra las
+ * 923, 895 y 472 medidas sobre la referencia. Un 1,12 % de error, frente al
+ * 2,30 % de la Bold y el 2,62 % de la Black.
+ */
+@font-face {
+  font-family: "SF Pro Display";
+  src: url("./assets/sf-pro-display-heavy.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 h2 {
   margin: 0 0 12px;
   font-size: 13px;

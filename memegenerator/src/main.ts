@@ -8,9 +8,11 @@ import {
   FONT_SIZE,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
+  FONT_NEW,
   NEW_FONT_SIZE,
   ZOOM_MAX,
   ZOOM_MIN,
+  fontFor,
   type Kind,
 } from "./format.js";
 import {
@@ -105,19 +107,24 @@ function options(): RenderOptions {
     photo: state.photo,
     photoSize: state.photoSize,
     transform: state.transform,
-    kind: kindEl.value === "new" ? "new" : "classic",
+    kind: currentKind(),
     logo: state.logo,
     logoSize: state.logo
       ? { width: state.logo.naturalWidth, height: state.logo.naturalHeight }
       : null,
     text: textEl.value,
     align: alignEl.value === "left" ? "left" : "center",
-    font: FONT,
+    font: fontFor(currentKind()),
     fontSize: Number(sizeEl.value),
     colorBand: bandEl.value,
     colorText: textColorEl.value,
     colorHighlight: highlightEl.value,
   };
+}
+
+/** El tipo elegido ahora mismo. */
+function currentKind(): Kind {
+  return kindEl.value === "new" ? "new" : "classic";
 }
 
 function setStatus(message: string, kind: "" | "error" = ""): void {
@@ -131,9 +138,17 @@ function setStatus(message: string, kind: "" | "error" = ""): void {
  * Espera a que cargue SF Pro antes de medir. Sin esto, la primera pasada mide
  * con la de respaldo y el texto sale con un ajuste que no corresponde.
  */
+/**
+ * Carga los dos pesos, no solo el del tipo elegido: cambiar de tipo no debe
+ * esperar a una descarga, y sin la fuente puesta la primera medicion del texto
+ * sale con la de respaldo y la banda queda de otro alto.
+ */
 async function ensureFont(): Promise<void> {
   try {
-    await document.fonts.load(`${FONT.weight} 64px ${FONT.stack}`);
+    await Promise.all([
+      document.fonts.load(`${FONT.weight} 64px ${FONT.stack}`),
+      document.fonts.load(`${FONT_NEW.weight} 64px ${FONT_NEW.stack}`),
+    ]);
     await document.fonts.ready;
   } catch {
     setStatus("No se pudo cargar SF Pro; se usará una de respaldo.", "error");
