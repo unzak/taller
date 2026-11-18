@@ -25,7 +25,7 @@ import {
 import { historial, newId, thumbnail } from "../../comun/historial.js";
 import { nav } from "../../comun/nav.js";
 import { applyFixes, check, type Issue } from "../../comun/spell.js";
-import logoUrl from "./assets/logo-cabronazi.png";
+import headUrl from "./assets/cabecera-cabronazi.png";
 import "./style.css";
 
 // La barra de las tres, lo primero: el hueco ya tiene su alto reservado en la
@@ -39,7 +39,10 @@ function need<T extends Element>(id: string): T {
 }
 
 const textEl = need<HTMLTextAreaElement>("text");
-const kindEl = need<HTMLSelectElement>("kind");
+const kindEls: Record<Kind, HTMLButtonElement> = {
+  classic: need<HTMLButtonElement>("kind-classic"),
+  new: need<HTMLButtonElement>("kind-new"),
+};
 const alignEl = need<HTMLSelectElement>("align");
 const sizeEl = need<HTMLInputElement>("size");
 const sizeValueEl = need<HTMLSpanElement>("size-value");
@@ -89,8 +92,8 @@ interface State {
   /** El archivo original y su id: lo que el historial guarda para volver a el. */
   photoFile: { id: string; file: File } | null;
   transform: PhotoTransform;
-  /** El logo de la cabecera del tipo `new`. Se carga una vez al arrancar. */
-  logo: HTMLImageElement | null;
+  /** La cabecera del tipo `new`. Se carga una vez al arrancar. */
+  head: HTMLImageElement | null;
 }
 
 const state: State = {
@@ -99,7 +102,7 @@ const state: State = {
   photoName: "",
   photoFile: null,
   transform: { zoom: 1, offsetX: 0, offsetY: 0 },
-  logo: null,
+  head: null,
 };
 
 function options(): RenderOptions {
@@ -108,10 +111,7 @@ function options(): RenderOptions {
     photoSize: state.photoSize,
     transform: state.transform,
     kind: currentKind(),
-    logo: state.logo,
-    logoSize: state.logo
-      ? { width: state.logo.naturalWidth, height: state.logo.naturalHeight }
-      : null,
+    head: state.head,
     text: textEl.value,
     align: alignEl.value === "left" ? "left" : "center",
     font: fontFor(currentKind()),
@@ -123,8 +123,10 @@ function options(): RenderOptions {
 }
 
 /** El tipo elegido ahora mismo. */
+let kind: Kind = "classic";
+
 function currentKind(): Kind {
-  return kindEl.value === "new" ? "new" : "classic";
+  return kind;
 }
 
 function setStatus(message: string, kind: "" | "error" = ""): void {
@@ -439,6 +441,7 @@ previewEl.addEventListener(
 
 function draw(): void {
   hintEl.hidden = state.photo !== null;
+  syncReset();
   // Centralizado aqui: asi ningun cambio puede dejar un encuadre invalido.
   // Escribir tambien mueve el hueco de la foto, y sin esto un desplazamiento
   // que era valido con la banda corta destapaba la banda al crecer.
@@ -695,28 +698,69 @@ const historico = historial<WorkData>({
  */
 const SIZE_BY_KIND: Record<Kind, number> = { classic: FONT_SIZE, new: NEW_FONT_SIZE };
 
-kindEl.addEventListener("change", () => {
-  const kind: Kind = kindEl.value === "new" ? "new" : "classic";
+/**
+ * `resetSize` es false solo al arrancar. Al recargar, el navegador repone los
+ * controles por su cuenta y lo hace DESPUES de este script, asi que fijar el
+ * cuerpo aqui no serviria de nada: lo pisaria el valor restaurado. Se deja el
+ * que venga y es el boton de "por defecto" quien avisa de que no esta en su
+ * sitio, que para eso esta.
+ */
+function setKind(next: Kind, resetSize = true): void {
+  kind = next;
+  for (const k of ["classic", "new"] as const) {
+    kindEls[k].setAttribute("aria-checked", String(k === kind));
+  }
+  // Cada tipo trae su cuerpo: cambiar de tipo a proposito vuelve al suyo.
+  if (resetSize) sizeEl.value = String(SIZE_BY_KIND[kind]);
+  draw();
+}
+
+for (const k of ["classic", "new"] as const) {
+  kindEls[k].addEventListener("click", () => setKind(k));
+}
+
+// --- Volver al valor por defecto -------------------------------------------
+
+/**
+ * El cuerpo se mueve tambien con la rueda y con el pellizco sobre el rotulo, y
+ * un gesto se escapa con facilidad: en cuanto deja de estar en su sitio le sale
+ * al lado el boton que lo devuelve. Mismo gesto que en hilogenerator.
+ */
+const resetSizeEl = document.createElement("button");
+resetSizeEl.type = "button";
+resetSizeEl.className = "reset";
+resetSizeEl.textContent = "↺ por defecto";
+resetSizeEl.title = "Volver al valor por defecto";
+resetSizeEl.hidden = true;
+resetSizeEl.addEventListener("click", (e) => {
+  // Va dentro del `label`: sin esto, pulsarlo le daria ademas el foco a la barra.
+  e.preventDefault();
   sizeEl.value = String(SIZE_BY_KIND[kind]);
   draw();
 });
+document.querySelector('label[for="size"]')?.append(resetSizeEl);
+
+function syncReset(): void {
+  resetSizeEl.hidden = Number(sizeEl.value) === SIZE_BY_KIND[kind];
+}
 
 // --- Arranque --------------------------------------------------------------
 
 textEl.value = "";
 sizeEl.value = String(FONT_SIZE);
+setKind("classic", false);
 previewEl.width = CANVAS_W;
 bandEl.value = COLOR_BAND;
 textColorEl.value = COLOR_TEXT;
 highlightEl.value = COLOR_HIGHLIGHT;
 // El logo no frena el arranque: si tarda o falla, se dibuja sin el y se
 // repinta en cuanto llegue.
-void loadImage(logoUrl)
+void loadImage(headUrl)
   .then((img) => {
-    state.logo = img;
+    state.head = img;
     draw();
   })
-  .catch(() => setStatus("No se pudo cargar el logo de la cabecera.", "error"));
+  .catch(() => setStatus("No se pudo cargar la cabecera.", "error"));
 
 void ensureFont().then(async () => {
   draw();

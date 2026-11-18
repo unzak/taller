@@ -709,35 +709,6 @@ input[type="range"]:disabled {
 }
 
 /* Portada o slide: dos pastillas, y la elegida en rosa. */
-.seg {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 4px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-
-.seg-btn {
-  padding: 9px 10px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 850;
-  letter-spacing: 0.07em;
-  color: var(--muted);
-  background: none;
-  border: 0;
-  border-radius: 9px;
-  cursor: pointer;
-}
-
-.seg-btn[aria-checked="true"] {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(237, 20, 112, 0.24);
-}
-
 .seg + .hint {
   margin: 8px 0 10px;
 }
@@ -805,24 +776,6 @@ input[type="range"]:disabled {
  * «Por defecto», al final de la etiqueta de cada barra. Solo esta cuando la
  * barra se ha movido, asi que el panel en reposo no tiene ni uno.
  */
-.reset {
-  float: right;
-  margin-left: 8px;
-  padding: 1px 8px;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 750;
-  color: var(--accent);
-  background: var(--accent-soft);
-  border: 1px solid transparent;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.reset:hover {
-  border-color: var(--accent);
-}
-
 /* Los archivos de la pieza: el nombre, y a su lado el boton de quitarlo. */
 .file-list {
   margin: 8px 0;

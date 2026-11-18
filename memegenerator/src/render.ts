@@ -3,18 +3,12 @@ import {
   CANVAS_H,
   CANVAS_W,
   CAP_RATIO,
-  COLOR_RULE,
   LINE_RATIO,
+  NEW_HEAD_H,
+  NEW_HEAD_W,
   NEW_LINE_RATIO,
-  NEW_LOGO_H,
-  NEW_LOGO_TOP,
   NEW_PAD_BOTTOM,
   NEW_PAD_TOP,
-  NEW_RULE_GAP,
-  NEW_RULE_H,
-  NEW_RULE_X,
-  NEW_RULE_Y1,
-  NEW_RULE_Y2,
   TEXT_MAX_W,
   type Font,
   type Kind,
@@ -39,9 +33,8 @@ export interface RenderOptions {
   photoSize: { width: number; height: number } | null;
   transform: PhotoTransform;
   kind: Kind;
-  /** El logo de la cabecera. Solo se usa en el tipo `new`. */
-  logo: CanvasImageSource | null;
-  logoSize: { width: number; height: number } | null;
+  /** La cabecera recortada: logo y filete. Solo se usa en el tipo `new`. */
+  head: CanvasImageSource | null;
   text: string;
   align: Align;
   font: Font;
@@ -295,7 +288,10 @@ function drawBand(
   ctx.fillStyle = opts.colorBand;
   ctx.fillRect(0, 0, layout.width, layout.bandH);
 
-  if (opts.kind === "new") drawHead(ctx, opts);
+  // La cabecera va a 1:1: el recorte ya trae su sitio y su tamaño.
+  if (opts.kind === "new" && opts.head) {
+    ctx.drawImage(opts.head, 0, 0, NEW_HEAD_W, NEW_HEAD_H);
+  }
 
   setFont(ctx, opts.font, layout.fontSize);
   ctx.textAlign = "left";
@@ -321,34 +317,4 @@ function drawBand(
       x += ctx.measureText(token.text).width;
     }
   });
-}
-
-/**
- * La cabecera del tipo `new`: el logo centrado y su filete, dos lineas finas
- * que mueren a los lados dejando aire alrededor del logo.
- *
- * El logo se escala por el alto y el ancho lo pone su propia proporcion: la
- * referencia esta comprimida y medirle el ancho al pixel no sale a cuenta.
- */
-function drawHead(ctx: CanvasRenderingContext2D, opts: RenderOptions): void {
-  const mid = CANVAS_W / 2;
-
-  let logoW = 0;
-  if (opts.logo && opts.logoSize && opts.logoSize.height > 0) {
-    logoW = (opts.logoSize.width * NEW_LOGO_H) / opts.logoSize.height;
-    ctx.drawImage(opts.logo, mid - logoW / 2, NEW_LOGO_TOP, logoW, NEW_LOGO_H);
-  }
-
-  // El filete arranca en el margen y se para antes del logo. Sin logo cargado
-  // cruza entero, que es lo que toca: no hay nada que esquivar.
-  const stop = logoW > 0 ? mid - logoW / 2 - NEW_RULE_GAP : mid;
-  const from = NEW_RULE_X;
-  if (stop <= from) return;
-
-  ctx.fillStyle = COLOR_RULE;
-  for (const y of [NEW_RULE_Y1, NEW_RULE_Y2]) {
-    ctx.fillRect(from, y, stop - from, NEW_RULE_H);
-    // El otro lado es el espejo, asi el conjunto queda centrado en el lienzo.
-    ctx.fillRect(CANVAS_W - stop, y, stop - from, NEW_RULE_H);
-  }
 }

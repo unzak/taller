@@ -351,3 +351,55 @@ body {
   font-size: 12px;
   letter-spacing: 0.06em;
 }
+
+/*
+ * Primitivas que usan varias herramientas, asi que viven aqui y no en la hoja
+ * de cada una: el grupo de botones que hace de selector, y el boton que
+ * devuelve una barra a su valor de partida.
+ */
+.seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.seg-btn {
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.seg-btn[aria-checked="true"] {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(237, 20, 112, 0.24);
+}
+
+.reset {
+  float: right;
+  margin-left: 8px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.reset:hover {
+  border-color: var(--accent);
+}
