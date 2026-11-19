@@ -1034,27 +1034,50 @@ file2El.addEventListener("change", () => {
  */
 let dragDepth = 0;
 
+/**
+ * Si lo que se arrastra no trae archivos, aqui no pinta nada.
+ *
+ * Arrastrar texto de la propia pagina dispara exactamente los mismos eventos,
+ * y seleccionar texto sin querer es facilisimo: basta pulsar sobre la etiqueta
+ * de una barra y mover el raton de camino al deslizador. Sin esta comprobacion
+ * salia el aviso de soltar al tocar cualquier control.
+ */
+function traeArchivos(e: DragEvent): boolean {
+  return e.dataTransfer?.types?.includes("Files") ?? false;
+}
+
 function showDrop(visible: boolean): void {
   dragDepth = visible ? dragDepth : 0;
   dropEl.hidden = !visible;
 }
 
 window.addEventListener("dragenter", (e) => {
+  if (!traeArchivos(e)) return;
   e.preventDefault();
   dragDepth += 1;
   dropEl.hidden = false;
 });
-window.addEventListener("dragover", (e) => e.preventDefault());
+// Solo se acepta la soltada de archivos: sin este `preventDefault` el navegador
+// no deja soltar, y con el puesto para todo aceptaria tambien texto.
+window.addEventListener("dragover", (e) => {
+  if (traeArchivos(e)) e.preventDefault();
+});
 window.addEventListener("dragleave", (e) => {
+  if (!traeArchivos(e)) return;
   e.preventDefault();
   dragDepth -= 1;
   if (dragDepth <= 0) showDrop(false);
 });
 window.addEventListener("drop", (e) => {
+  if (!traeArchivos(e)) return;
   e.preventDefault();
   showDrop(false);
   void loadFiles([...(e.dataTransfer?.files ?? [])]);
 });
+
+// Red de seguridad: un arrastre que empieza dentro de la pagina acaba siempre
+// en `dragend`, y asi la cuenta no se queda descuadrada pase lo que pase.
+window.addEventListener("dragend", () => showDrop(false));
 
 // Pegar una captura del portapapeles vale igual que soltarla.
 window.addEventListener("paste", (e) => {
