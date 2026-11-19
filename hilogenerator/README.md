@@ -86,6 +86,11 @@ trozo de la fuente con los emojis que se usan, la primera vez que aparecen.
 El hilo arranca con una portada y lo que se añade con el `+` son slides, pero el
 tipo se cambia en cualquier pieza.
 
+Junto a la tira, **Nuevo hilo · Duplicar · Eliminar**. «Duplicar» copia la
+pieza abierta —texto, medidas, encuadres, imágenes o vídeo— y la pone justo
+detrás, ya abierta. La copia es independiente: tocarla o eliminar el original
+no afecta a la otra.
+
 ## Las dos marcas del texto
 
 Son independientes y se pueden anidar:

@@ -50,6 +50,7 @@ const stripEl = need<HTMLDivElement>("strip");
 const moveLeftEl = need<HTMLButtonElement>("move-left");
 const moveRightEl = need<HTMLButtonElement>("move-right");
 const removeEl = need<HTMLButtonElement>("remove");
+const duplicateEl = need<HTMLButtonElement>("duplicate");
 const kindHintEl = need<HTMLParagraphElement>("kind-hint");
 const lookEls: Record<Look, HTMLButtonElement> = {
   classic: need<HTMLButtonElement>("look-classic"),
@@ -443,6 +444,50 @@ removeEl.addEventListener("click", () => {
   const [gone] = slides.splice(current, 1);
   if (gone) dropSlide(gone);
   select(Math.min(current, slides.length - 1));
+});
+
+/**
+ * Una copia de la pieza, con todo: texto, medidas, encuadres y archivos. Cada
+ * archivo se vuelve a abrir, porque una pieza suelta lo suyo al eliminarse y
+ * la otra se quedaria sin el; pero con el mismo id, asi que el historial lo
+ * guarda una sola vez.
+ */
+async function duplicateSlide(src: Slide): Promise<Slide> {
+  const s = newSlide(src.look);
+  const { items, inset, thumb, ...rest } = src;
+  Object.assign(s, structuredClone(rest));
+  const reopen = (m: Media): Promise<Media> =>
+    m.kind === "video" ? openVideo(m.file, m.id) : openImage(m.file, m.id);
+  for (const it of items) {
+    s.items.push({ media: await reopen(it.media), transform: { ...it.transform }, flip: it.flip });
+  }
+  const { media, source, size, ...place } = inset;
+  Object.assign(s.inset, place);
+  if (media) {
+    const copy = await reopen(media);
+    s.inset.media = copy;
+    s.inset.source = copy.el;
+    s.inset.size = copy.size;
+  }
+  s.thumb.getContext("2d")?.drawImage(thumb, 0, 0);
+  return s;
+}
+
+duplicateEl.addEventListener("click", async () => {
+  if (duplicateEl.disabled) return;
+  duplicateEl.disabled = true;
+  try {
+    const at = current;
+    const copy = await duplicateSlide(cur());
+    // Justo detras de la que se duplica, y se abre la copia.
+    slides.splice(at + 1, 0, copy);
+    select(at + 1);
+    historico.schedule();
+  } catch {
+    setStatus("No se pudo duplicar la pieza.", "error");
+  } finally {
+    duplicateEl.disabled = false;
+  }
 });
 
 /** Pasa la pieza abierta a los controles. Lo contrario lo hacen sus `input`. */
