@@ -15,7 +15,9 @@ import {
   FONT_SIZE,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
+  FORMATOS,
   VIDEO_Y,
+  type Formato,
   ZOOM_MAX,
   ZOOM_MIN,
 } from "./format.js";
@@ -54,6 +56,10 @@ const pickEl = need<HTMLButtonElement>("pick");
 const fileNameEl = need<HTMLParagraphElement>("file-name");
 const seekEl = need<HTMLInputElement>("seek");
 const seekValueEl = need<HTMLSpanElement>("seek-value");
+const formatoEls: Record<Formato, HTMLButtonElement> = {
+  reel: need<HTMLButtonElement>("fmt-reel"),
+  story: need<HTMLButtonElement>("fmt-story"),
+};
 const flipEl = need<HTMLButtonElement>("flip");
 const playEl = need<HTMLButtonElement>("play");
 const trimEl = need<HTMLDivElement>("trim");
@@ -120,6 +126,8 @@ interface State {
    */
   trim: { start: number; end: number };
   overlay: HTMLImageElement | null;
+  /** Con logo y filetes, o sin ellos y el rotulo arriba. */
+  formato: Formato;
   /**
    * Altura del CTA, de 0 a 1 del lienzo. Vive aqui y no en un control porque no
    * hay ninguno: se arrastra sobre la previa, como el encuadre del video.
@@ -139,6 +147,7 @@ const state: State = {
   flip: false,
   trim: { start: 0, end: 0 },
   overlay: null,
+  formato: "reel",
   ctaPos: CTA_POS,
   result: null,
   busy: false,
@@ -150,6 +159,7 @@ function options(): RenderOptions {
     frameSize: state.frameSize,
     transform: state.transform,
     flip: state.flip,
+    formato: state.formato,
     overlay: state.overlay,
     text: textEl.value,
     font: FONT,
@@ -360,6 +370,26 @@ sourceEl.addEventListener("seeked", () => {
   showTime();
   draw();
 });
+
+// --- Formato ----------------------------------------------------------------
+
+/**
+ * Cambiar de formato no toca el encuadre, pero si mueve el techo del hueco: en
+ * `story` el rotulo sube al sitio del logo y el degradado sube con el. El
+ * recorte del video hay que volver a mirarlo, porque lo que antes cabia puede
+ * dejar de caber —o al reves.
+ */
+function setFormato(next: Formato): void {
+  state.formato = next;
+  for (const f of FORMATOS) {
+    formatoEls[f].setAttribute("aria-checked", String(f === state.formato));
+  }
+  draw();
+}
+
+for (const f of FORMATOS) {
+  formatoEls[f].addEventListener("click", () => setFormato(f));
+}
 
 // --- Voltear ----------------------------------------------------------------
 
@@ -842,7 +872,7 @@ function draw(): void {
       (layout.videoBottom >= layout.height
         ? ", sin barra negra"
         : `, barra de ${layout.height - layout.videoBottom} px`) +
-      (layout.videoTop === VIDEO_Y ? "" : ` · degradado en ${layout.videoTop}`)
+      (layout.videoTop === VIDEO_Y[state.formato] ? "" : ` · degradado en ${layout.videoTop}`)
     : "";
   const cta = layout.cta
     ? ` · CTA en ${layout.cta.baseline} px a ${layout.cta.size.toFixed(1)} px` +
@@ -1217,6 +1247,7 @@ highlightEl.value = COLOR_HIGHLIGHT;
 // cuerpo ya puestos: ponerlo es abrirlo y nada mas.
 ctaEl.value = CTA_TEXT;
 ctaSizeEl.value = String(CTA_FONT_SIZE);
+setFormato(state.formato);
 // Sin video no hay nada que voltear, recorrer ni recortar.
 showFlip();
 showTrim();

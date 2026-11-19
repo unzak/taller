@@ -11,6 +11,7 @@ import {
   LINE_RATIO,
   TEXT_MAX_W,
   TEXT_TOP,
+  type Formato,
   ART_OFFSET,
   FADE_TOP_DRAW_H,
   LOGO_SCALE,
@@ -62,6 +63,12 @@ export interface RenderOptions {
   transform: VideoTransform;
   /** Voltea el video en horizontal. No mueve el encuadre: solo lo espeja. */
   flip: boolean;
+  /**
+   * `reel` lleva logo y filetes; `story` los quita y le da su sitio al rotulo.
+   * No es solo dejar de pintarlos: el rotulo arranca mas arriba, y como el
+   * degradado va detras del rotulo, el hueco del video se abre antes.
+   */
+  formato: Formato;
   /** La capa `PLANTILLA` del PSD, con su hueco y sus degradados. */
   overlay: CanvasImageSource | null;
   text: string;
@@ -103,8 +110,8 @@ export interface RenderOptions {
  * depende solo de cuanto ocupe, y es lo que decide donde se pone el techo del
  * hueco.
  */
-function blockBottomFor(lineCount: number, size: number): number {
-  return TEXT_TOP + blockHeight(lineCount, size);
+function blockBottomFor(lineCount: number, size: number, formato: Formato): number {
+  return TEXT_TOP[formato] + blockHeight(lineCount, size);
 }
 
 /**
@@ -248,7 +255,7 @@ function compose(
   const lines = layoutLines(ctx, tokenize(parseSegments(opts.text)), size, TEXT_MAX_W);
   if (lines.length === 0) return { lines, fits: true };
   const widest = Math.max(0, ...lines.map((l) => lineWidth(ctx, l, size)));
-  const bottom = blockBottomFor(lines.length, size);
+  const bottom = blockBottomFor(lines.length, size, opts.formato);
   return { lines, fits: bottom <= TEXT_MAX_BOTTOM && widest <= TEXT_MAX_W };
 }
 
@@ -328,11 +335,11 @@ function videoScale(size: { width: number; height: number }, zoom: number): numb
  * Depende solo del texto y del cuerpo, nunca del encuadre, asi que se puede
  * calcular antes de tocar el video.
  */
-function videoTopFor(lineCount: number, size: number): number {
+function videoTopFor(lineCount: number, size: number, formato: Formato): number {
   // Sin rotulo no hay nada que seguir: se queda en el sitio de siempre, que es
   // el que no sorprende.
-  if (lineCount === 0) return VIDEO_Y;
-  return Math.round(blockBottomFor(lineCount, size) + TEXT_GAP_BOTTOM);
+  if (lineCount === 0) return VIDEO_Y[formato];
+  return Math.round(blockBottomFor(lineCount, size, formato) + TEXT_GAP_BOTTOM);
 }
 
 /**
@@ -464,8 +471,8 @@ export function computeLayout(
 
   const lines = composed.lines;
   setFont(ctx, opts.font, size);
-  const blockTop = TEXT_TOP;
-  const videoTopBase = videoTopFor(lines.length, size);
+  const blockTop = TEXT_TOP[opts.formato];
+  const videoTopBase = videoTopFor(lines.length, size, opts.formato);
 
   // El rectangulo se redondea aqui, y no al dibujar, porque este mismo va a
   // parar a ffmpeg: si la previa y la pieza final redondean distinto, no
@@ -681,27 +688,31 @@ function drawPlate(
     // de paso permite tratarlas por separado.
     ctx.fillRect(0, 0, w, layout.videoTop);
 
-    // Los filetes, en dos trozos, que es como estan: acaban justo donde empieza
-    // la caja del logo y vuelven a empezar justo donde acaba.
-    ctx.drawImage(
-      overlay,
-      0, SRC_RULES_Y, SRC_RULES_LEFT_W, SRC_RULES_H,
-      0, SRC_RULES_Y - ART_OFFSET, SRC_RULES_LEFT_W, SRC_RULES_H,
-    );
-    ctx.drawImage(
-      overlay,
-      SRC_RULES_RIGHT_X, SRC_RULES_Y, w - SRC_RULES_RIGHT_X, SRC_RULES_H,
-      SRC_RULES_RIGHT_X, SRC_RULES_Y - ART_OFFSET, w - SRC_RULES_RIGHT_X, SRC_RULES_H,
-    );
+    // El logo y los filetes son cosa de `reel`. En `story` no se pintan, y el
+    // rotulo ya viene puesto en su sitio: la cabecera queda limpia.
+    if (opts.formato === "reel") {
+      // Los filetes, en dos trozos, que es como estan: acaban justo donde
+      // empieza la caja del logo y vuelven a empezar justo donde acaba.
+      ctx.drawImage(
+        overlay,
+        0, SRC_RULES_Y, SRC_RULES_LEFT_W, SRC_RULES_H,
+        0, SRC_RULES_Y - ART_OFFSET, SRC_RULES_LEFT_W, SRC_RULES_H,
+      );
+      ctx.drawImage(
+        overlay,
+        SRC_RULES_RIGHT_X, SRC_RULES_Y, w - SRC_RULES_RIGHT_X, SRC_RULES_H,
+        SRC_RULES_RIGHT_X, SRC_RULES_Y - ART_OFFSET, w - SRC_RULES_RIGHT_X, SRC_RULES_H,
+      );
 
-    // Y el logo, reducido desde su centro para que no se mueva de sitio.
-    const logoW = SRC_LOGO_W * LOGO_SCALE;
-    const logoH = SRC_LOGO_H * LOGO_SCALE;
-    ctx.drawImage(
-      overlay,
-      SRC_LOGO_CX - SRC_LOGO_W / 2, SRC_LOGO_CY - SRC_LOGO_H / 2, SRC_LOGO_W, SRC_LOGO_H,
-      SRC_LOGO_CX - logoW / 2, SRC_LOGO_CY - logoH / 2 - ART_OFFSET, logoW, logoH,
-    );
+      // Y el logo, reducido desde su centro para que no se mueva de sitio.
+      const logoW = SRC_LOGO_W * LOGO_SCALE;
+      const logoH = SRC_LOGO_H * LOGO_SCALE;
+      ctx.drawImage(
+        overlay,
+        SRC_LOGO_CX - SRC_LOGO_W / 2, SRC_LOGO_CY - SRC_LOGO_H / 2, SRC_LOGO_W, SRC_LOGO_H,
+        SRC_LOGO_CX - logoW / 2, SRC_LOGO_CY - logoH / 2 - ART_OFFSET, logoW, logoH,
+      );
+    }
 
     ctx.drawImage(
       overlay,

@@ -19,48 +19,62 @@ unos 3 s. Si el navegador no puede con un vídeo, se monta con ffmpeg compilado
 a WebAssembly, que lo abre todo pero tarda bastante más (ver «Cómo se monta el
 MP4»).
 
+## Los dos formatos
+
+El selector de arriba elige la pieza:
+
+- **REEL/TIKTOK** es la plantilla del PSD tal cual: logo, filetes y el rótulo
+  debajo.
+- **STORY** quita el logo y los dos filetes, y le da su sitio al rótulo, que
+  arranca donde arrancaba el logo —la fila 284 del lienzo—. Como el degradado va
+  siempre detrás del rótulo, esa cabecera que se vacía se la queda entera el
+  vídeo: **144 px más de imagen**, medidos.
+
+Lo demás no cambia de un formato a otro.
+
 ## Uso
 
-1. Escribe el **rótulo**. Sale siempre en mayúsculas, como en el PSD. Lo que
+1. Elige el **formato**, REEL/TIKTOK o STORY.
+2. Escribe el **rótulo**. Sale siempre en mayúsculas, como en el PSD. Lo que
    envuelvas en `*asteriscos*` sale en el color de resaltado, igual que en
    news-maker y memegenerator.
-2. Ajusta el **tamaño de letra** si quieres. Viene puesto el del PSD, 52,3 px.
+3. Ajusta el **tamaño de letra** si quieres. Viene puesto el del PSD, 52,3 px.
    **El degradado de arriba va donde acabe el rótulo**: con dos líneas cae
    exactamente donde el PSD lo pone, con tres baja para dejarles sitio en vez de
    encoger la letra, y con una sola sube 63 px, porque no hay razón para
    guardarle a una línea el hueco de dos. La letra solo se reduce si llegase a
    dejar la ventana por debajo de su mínimo, cosa que con el cuerpo topado en
    76 px no pasa hasta las once líneas.
-3. Suelta el **vídeo** en cualquier parte de la página —no hay que apuntar a
+4. Suelta el **vídeo** en cualquier parte de la página —no hay que apuntar a
    ninguna caja— o elígelo con el botón.
-4. Si el primer fotograma sale en negro —que pasa a menudo—, recórrelo con la
+5. Si el primer fotograma sale en negro —que pasa a menudo—, recórrelo con la
    **barra que hay bajo la previa**. El **play** de su izquierda reproduce el
    montaje entero, con sonido, para verlo en movimiento. Recorrerla no le
    recorta nada al vídeo: solo cambia lo que se ve mientras encuadras.
-5. La **barra de las tijeras**, justo debajo, es el recorte. Sus dos extremos se
+6. La **barra de las tijeras**, justo debajo, es el recorte. Sus dos extremos se
    arrastran, o se afinan con las flechas del teclado —una décima por pulsación,
    un segundo con Mayúsculas— y al moverlos la previa salta a ese punto para ver
    por dónde estás cortando. La barra de reproducción **se queda encerrada entre
    los dos**, así que lo que recorres, y lo que reproduce el play, es exactamente
    lo que se va a exportar. Sin tocarlos abarca el vídeo entero y no se recorta
    nada.
-6. El icono de las flechas, **abajo a la derecha de la previa**, voltea el vídeo
+7. El icono de las flechas, **abajo a la derecha de la previa**, voltea el vídeo
    en horizontal. No mueve el encuadre: solo da la vuelta a la imagen dentro de
    él.
-7. Ajusta el **tamaño del vídeo** con la barra. **El margen negro de abajo se
+8. Ajusta el **tamaño del vídeo** con la barra. **El margen negro de abajo se
    adapta solo**: al ampliar, el vídeo baja y el margen se encoge, hasta llegar
    al borde del lienzo y desaparecer; al reducir, vuelve a crecer. Arrastrando
    sobre la vista previa lo mueves; si es más largo que el hueco lo recorres de
    arriba abajo, y el encuadre está topado para que no deje nunca hueco.
-8. Si quieres **más margen abajo** del que sale solo, súbelo con la barra de
+9. Si quieres **más margen abajo** del que sale solo, súbelo con la barra de
    **margen inferior**. Es opcional: en cero es automático. Lo que elijas se
    readapta al cambiar el tamaño del vídeo, porque los dos extremos de esa barra
    salen del encuadre — el mismo punto vale 195 px con el vídeo al 100 % y 802
    con el vídeo al 200 %.
-9. Cambia los **colores** si quieres. El apartado va plegado, porque casi
-   siempre son los mismos. En escritorio la previa acompaña al scroll, así que
-   el selector se toca mirando el resultado.
-10. Pon el **CTA** si quieres: el reclamo que se pega sobre el vídeo, en una
+10. Cambia los **colores** si quieres. El apartado va plegado, porque casi
+    siempre son los mismos. En escritorio la previa acompaña al scroll, así que
+    el selector se toca mirando el resultado.
+11. Pon el **CTA** si quieres: el reclamo que se pega sobre el vídeo, en una
     línea, centrado y en el rosa de la plantilla, que es siempre el mismo.
     **Abrir el apartado es ponerlo y plegarlo es quitarlo**; no hay casilla que
     marcar. Viene escrito `*reenvíaselo*`, que sale **tal cual**, con sus
@@ -68,7 +82,7 @@ MP4»).
     Se **arrastra sobre la vista previa** para subirlo y bajarlo —solo eso: a
     lo ancho va centrado y punto—, y la rueda o el pellizco le cambian el
     cuerpo, que también tiene su barra.
-11. **GENERA**. Abajo aparece el resultado con el botón de descarga. Solo si
+12. **GENERA**. Abajo aparece el resultado con el botón de descarga. Solo si
     hay que tirar del motor de respaldo (ffmpeg), la primera vez se descargan
     unos 30 MB, que luego quedan en caché.
 

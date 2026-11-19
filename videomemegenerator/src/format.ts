@@ -96,11 +96,26 @@ export const ART_OFFSET = HEADER_LIFT + ART_LIFT;
 export const VIDEO_MIN_H = 413;
 
 /**
+ * Los dos formatos de la pieza.
+ *
+ * `reel` es la plantilla del PSD tal cual: logo, filetes y el rotulo debajo.
+ * `story` quita el logo y los dos filetes, y le da su sitio al rotulo, que
+ * arranca donde arrancaba el logo. Como el degradado va siempre detras del
+ * rotulo, esa cabecera que se vacia se la queda entera el video.
+ */
+export type Formato = "reel" | "story";
+
+export const FORMATOS = ["reel", "story"] as const;
+
+/**
  * Donde acaba la tinta de la cabecera **en el lienzo**, con el logo ya reducido
  * y todo subido. Manda el logo, que baja mas que los filetes.
  */
 export const ART_BOTTOM =
   Math.max(SRC_LOGO_CY + (SRC_LOGO_H * LOGO_SCALE) / 2, SRC_RULES_Y + SRC_RULES_H) - ART_OFFSET;
+
+/** Y donde empieza: el borde de arriba del logo, ya reducido y subido. */
+export const ART_TOP = SRC_LOGO_CY - (SRC_LOGO_H * LOGO_SCALE) / 2 - ART_OFFSET;
 
 /**
  * Capa `TEXTO`: SFProDisplay-Bold, FontSize 42 x la escala 1.24484 del layer.
@@ -156,14 +171,20 @@ export const TEXT_MAX_W = 915;
 export const TEXT_GAP_TOP = 33 - 5;
 
 /**
- * Donde arranca la tinta del rotulo, siempre.
+ * Donde arranca la tinta del rotulo, por formato.
  *
  * El rotulo se ancla **por arriba**, no por su centro. Centrandolo, una sola
  * linea quedaba flotando en mitad de una cabecera pensada para dos y dejaba un
  * hueco muerto encima del video; anclado aqui, el bloque crece siempre hacia
  * abajo y es el degradado el que se aparta.
+ *
+ * En `reel` arranca bajo los filetes, con el aire del PSD. En `story` no hay
+ * logo ni filetes que esquivar, asi que sube a ocupar su sitio.
  */
-export const TEXT_TOP = Math.round(ART_BOTTOM + TEXT_GAP_TOP);
+export const TEXT_TOP: Record<Formato, number> = {
+  reel: Math.round(ART_BOTTOM + TEXT_GAP_TOP),
+  story: Math.round(ART_TOP),
+};
 
 /**
  * Aire entre el final del rotulo y el techo del hueco. Es lo que arrastra al
@@ -186,9 +207,16 @@ export const TEXT_GAP_BOTTOM = 18;
  * cabecera —reducir el logo, subirla— lo arrastra sin tener que reajustarlo a
  * mano.
  */
-export const VIDEO_Y = Math.round(
-  TEXT_TOP + FONT_SIZE * LINE_RATIO + FONT_SIZE * CAP_RATIO + TEXT_GAP_BOTTOM,
-);
+export const VIDEO_Y: Record<Formato, number> = {
+  reel: referencia("reel"),
+  story: referencia("story"),
+};
+
+function referencia(formato: Formato): number {
+  return Math.round(
+    TEXT_TOP[formato] + FONT_SIZE * LINE_RATIO + FONT_SIZE * CAP_RATIO + TEXT_GAP_BOTTOM,
+  );
+}
 
 /**
  * Hasta donde puede bajar la tinta del rotulo. No es una medida del PSD: es lo
