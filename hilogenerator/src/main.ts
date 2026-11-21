@@ -1528,7 +1528,7 @@ function moveText(target: TextTarget, dy: number, dx = 0): void {
 }
 
 /**
- * El iman del texto de TIKTOK, como las guias inteligentes de Photoshop: al
+ * El iman del texto de TIKTOK y de la imagen, como las guias de Photoshop: al
  * pasar cerca del centro del lienzo, a lo ancho o a lo alto, el texto se queda
  * clavado en el y sale una guia rosa. Se cuenta en pixeles de pantalla para
  * que se note igual con la previa grande o pequeña.
@@ -1542,8 +1542,11 @@ const GUIDE_COLOR = "#ff2d95";
  * texto de la guia en vez de dejarlo atrapado.
  */
 let freeRaw: { x: number; y: number } | null = null;
-/** Las guias que se ven ahora: la vertical del centro y la horizontal. */
-let guides = { v: false, h: false };
+/**
+ * Las guias que se ven ahora: `x` es donde va la vertical y `y` la
+ * horizontal, en pixeles de lienzo, o null si no hay.
+ */
+let guides: { x: number | null; y: number | null } = { x: null, y: null };
 
 function snapText(s: Slide, dx: number, dy: number): void {
   const raw = freeRaw ?? { ...s.pos };
@@ -1559,23 +1562,60 @@ function snapText(s: Slide, dx: number, dy: number): void {
   const v = Math.abs(raw.x - CANVAS_W / 2) < t;
   const h = Math.abs(raw.y + offY - CANVAS_H / 2) < t;
   s.pos = { x: v ? CANVAS_W / 2 : raw.x, y: h ? CANVAS_H / 2 - offY : raw.y };
-  guides = { v, h };
+  guides = { x: v ? CANVAS_W / 2 : null, y: h ? CANVAS_H / 2 : null };
+}
+
+/** Lo mismo que `freeRaw`, para el encuadre de la imagen que se arrastra. */
+let mediaRaw: { x: number; y: number } | null = null;
+
+/**
+ * El iman de la imagen al arrastrarla: su centro se pega al centro del lienzo
+ * y al de su hueco (con dos imagenes no coinciden a lo ancho; en CLASSIC, a lo
+ * alto). Solo sale la guia si la imagen ha podido quedarse de verdad ahi: una
+ * imagen grande no puede destapar el hueco para centrarse en el lienzo.
+ */
+function snapMedia(dx: number, dy: number): void {
+  const s = cur();
+  const it = item(s);
+  const col = computeLayout(previewCtx, options(s, true)).columns[s.active];
+  if (!it || !col) return;
+  const t = it.transform;
+  // La posicion sin iman tambien se queda dentro de lo permitido: si no, al
+  // pasarse del tope habria que deshacer todo lo arrastrado de mas.
+  const raw = { zoom: t.zoom, offsetX: (mediaRaw?.x ?? t.offsetX) + dx, offsetY: (mediaRaw?.y ?? t.offsetY) + dy };
+  clampMediaOffset(it.media.size, raw, col);
+  mediaRaw = { x: raw.offsetX, y: raw.offsetY };
+
+  const tol = SNAP_PX * canvasScale();
+  const cx = col.x + col.w / 2;
+  const cy = col.y + col.h / 2;
+  const near = (at: number, lines: number[]): number | null =>
+    lines.find((g) => Math.abs(at - g) < tol) ?? null;
+  const gx = near(cx + raw.offsetX, [CANVAS_W / 2, cx]);
+  const gy = near(cy + raw.offsetY, [CANVAS_H / 2, cy]);
+  t.offsetX = gx === null ? raw.offsetX : gx - cx;
+  t.offsetY = gy === null ? raw.offsetY : gy - cy;
+  clampMediaOffset(it.media.size, t, col);
+  guides = {
+    x: gx !== null && Math.abs(cx + t.offsetX - gx) < 0.5 ? gx : null,
+    y: gy !== null && Math.abs(cy + t.offsetY - gy) < 0.5 ? gy : null,
+  };
 }
 
 /** Las guias van solo en la previa: ni en la miniatura ni en la pieza. */
 function drawGuides(): void {
-  if (cur().look !== "tiktok" || (!guides.v && !guides.h)) return;
+  if (guides.x === null && guides.y === null) return;
   previewCtx.save();
   previewCtx.strokeStyle = GUIDE_COLOR;
   previewCtx.lineWidth = 2 * canvasScale();
   previewCtx.beginPath();
-  if (guides.v) {
-    previewCtx.moveTo(CANVAS_W / 2, 0);
-    previewCtx.lineTo(CANVAS_W / 2, CANVAS_H);
+  if (guides.x !== null) {
+    previewCtx.moveTo(guides.x, 0);
+    previewCtx.lineTo(guides.x, CANVAS_H);
   }
-  if (guides.h) {
-    previewCtx.moveTo(0, CANVAS_H / 2);
-    previewCtx.lineTo(CANVAS_W, CANVAS_H / 2);
+  if (guides.y !== null) {
+    previewCtx.moveTo(0, guides.y);
+    previewCtx.lineTo(CANVAS_W, guides.y);
   }
   previewCtx.stroke();
   previewCtx.restore();
@@ -1622,6 +1662,8 @@ previewEl.addEventListener("pointerdown", (e) => {
     // sobre la ventana hace zoom de la imagen.
     target = targetAt(g.mx, g.my);
     freeRaw = null;
+    mediaRaw = null;
+    guides = { x: null, y: null };
     if (!target) return;
     pinch = {
       dist: g.dist,
@@ -1637,6 +1679,7 @@ previewEl.addEventListener("pointerdown", (e) => {
 
   target = targetAt(e.clientX, e.clientY);
   freeRaw = null;
+  mediaRaw = null;
   // Pulsar en la ventana vacia es pedir un archivo. Se apunta aqui y se abre
   // en el `click`, que es el gesto que los navegadores aceptan para eso.
   pickOnClick = !target && cur().items.length === 0;
@@ -1677,8 +1720,7 @@ previewEl.addEventListener("pointermove", (e) => {
   }
 
   if (target === "media") {
-    transform.offsetX += (e.clientX - lastX) * s;
-    transform.offsetY += (e.clientY - lastY) * s;
+    snapMedia((e.clientX - lastX) * s, (e.clientY - lastY) * s);
   } else if (target === "inset") {
     dragInset((e.clientX - lastX) * s, (e.clientY - lastY) * s);
   } else {
@@ -1713,8 +1755,9 @@ for (const type of ["pointerup", "pointercancel"] as const) {
       // Al soltar se apaga el iman: la siguiente vez arranca desde donde
       // haya quedado el texto, y las guias desaparecen.
       freeRaw = null;
-      if (guides.v || guides.h) {
-        guides = { v: false, h: false };
+      mediaRaw = null;
+      if (guides.x !== null || guides.y !== null) {
+        guides = { x: null, y: null };
         draw();
       }
     }

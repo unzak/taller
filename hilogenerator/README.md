@@ -160,6 +160,9 @@ con el aro **del color del resaltado**.
   se puede **achicar** por debajo de su encaje, hasta el 30 %, para que quepa
   entera: lo que queda libre en su hueco sale en **blanco**, en la previa, en
   el PNG y en el MP4, y la imagen se mueve por dentro del hueco sin salirse.
+  Al arrastrarla tiene el mismo imán que el texto de TIKTOK: su centro se pega
+  al centro del lienzo y al de su hueco, con la guía rosa, y seguir
+  arrastrando la despega. Solo se pega donde de verdad puede quedarse.
 - **Cuerpo de letra**: con su barra, o con la rueda y el pellizco sobre el texto.
 
 Cada barra que se haya movido de su sitio enseña a su lado un **«↺ por
