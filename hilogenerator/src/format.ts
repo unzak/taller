@@ -249,6 +249,14 @@ export const COLOR_HIGHLIGHT = "#ffff00";
 export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 3;
 
+/**
+ * La imagen o el video si se puede achicar por debajo del encaje, hasta un
+ * 30 %, para cuadrarlo entero: lo que deja libre en su hueco sale en blanco.
+ * La mosca sigue en ZOOM_MIN, que siempre tapa su circulo.
+ */
+export const MEDIA_ZOOM_MIN = 0.3;
+export const MEDIA_BG = "#ffffff";
+
 export interface Swatch {
   label: string;
   hex: string;

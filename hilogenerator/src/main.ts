@@ -17,6 +17,8 @@ import {
   styleFor,
   ZOOM_MAX,
   ZOOM_MIN,
+  MEDIA_ZOOM_MIN,
+  MEDIA_BG,
   type Look,
   type Style,
 } from "./format.js";
@@ -1590,7 +1592,7 @@ function setZoom(zoom: number, anchor?: { x: number; y: number }): void {
   const col = computeLayout(previewCtx, options(s, true)).columns[s.active];
   if (it && col) {
     const at = anchor ?? { x: col.x + col.w / 2, y: col.y + col.h / 2 };
-    zoomMediaAt(it.media.size, it.transform, clamp(zoom, ZOOM_MIN, ZOOM_MAX), col, at);
+    zoomMediaAt(it.media.size, it.transform, clamp(zoom, MEDIA_ZOOM_MIN, ZOOM_MAX), col, at);
   }
   draw();
 }
@@ -1907,6 +1909,7 @@ async function build(s: Slide, i: number): Promise<Result> {
         canvas: { w: CANVAS_W, h: CANVAS_H },
         flip: s.items[clip.index]?.flip ?? false,
         trim: trimRange(s),
+        background: MEDIA_BG,
       },
       {
         onStage: (message) => setStatus(`Pieza ${number}: ${message}`),
@@ -2401,7 +2404,7 @@ for (const el of [marginBottomEl, marginTopEl]) {
   el.min = String(MARGIN_MIN);
   el.max = String(MARGIN_MAX);
 }
-zoomEl.min = String(ZOOM_MIN);
+zoomEl.min = String(MEDIA_ZOOM_MIN);
 zoomEl.max = String(ZOOM_MAX);
 insetSizeEl.min = String(INSET.radiusMin);
 insetSizeEl.max = String(INSET.radiusMax);

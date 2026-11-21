@@ -62,7 +62,7 @@ export async function encodeNative(job: EncodeJob, handlers: EncodeHandlers): Pr
         processedWidth: w,
         processedHeight: h,
         process: (sample) => {
-          ctx.fillStyle = "#000000";
+          ctx.fillStyle = job.background ?? "#000000";
           ctx.fillRect(0, 0, w, h);
           // `draw` ya tiene en cuenta el giro que traen los videos del movil,
           // igual que el <video> de la previa, con el que se calculo `rect`.

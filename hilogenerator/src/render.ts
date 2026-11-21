@@ -6,6 +6,7 @@ import {
   MEDIA_MIN_H,
   TIKTOK_BOX,
   styleFor,
+  MEDIA_BG,
   type Look,
   type Style,
 } from "./format.js";
@@ -569,8 +570,10 @@ export function clampMediaOffset(
   area: Rect,
 ): void {
   const scale = mediaScale(size, transform.zoom, area);
-  const maxX = Math.max(0, (size.width * scale - area.w) / 2);
-  const maxY = Math.max(0, (size.height * scale - area.h) / 2);
+  // Mas grande que el hueco, se mueve lo que sobra; mas pequeña (zoom por
+  // debajo de 1), se mueve por dentro del hueco sin salirse de el.
+  const maxX = Math.abs(size.width * scale - area.w) / 2;
+  const maxY = Math.abs(size.height * scale - area.h) / 2;
   transform.offsetX = Math.min(maxX, Math.max(-maxX, transform.offsetX));
   transform.offsetY = Math.min(maxY, Math.max(-maxY, transform.offsetY));
 }
@@ -604,8 +607,7 @@ export function zoomMediaAt(
 
 /**
  * Pinta las imagenes, cada una recortada a su hueco para que al reencuadrar
- * una no se meta en el terreno de la otra. Con `plate` se salta el video y
- * pone negro bajo las fijas, por si alguna trae transparencia.
+ * una no se meta en el terreno de la otra. Con `plate` se salta el video.
  */
 function drawItems(
   ctx: CanvasRenderingContext2D,
@@ -622,10 +624,10 @@ function drawItems(
     ctx.beginPath();
     ctx.rect(col.x, col.y, col.w, col.h);
     ctx.clip();
-    if (plate) {
-      ctx.fillStyle = styleFor(opts.look).background;
-      ctx.fillRect(col.x, col.y, col.w, col.h);
-    }
+    // Blanco debajo: es lo que se ve alrededor de una imagen achicada, y tapa
+    // la transparencia de un PNG. Con el video, el blanco lo pone el motor.
+    ctx.fillStyle = MEDIA_BG;
+    ctx.fillRect(col.x, col.y, col.w, col.h);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
     if (item.flip) {

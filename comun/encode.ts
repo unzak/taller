@@ -66,6 +66,11 @@ export interface EncodeJob {
   flip: boolean;
   /** Tramo que se conserva, en segundos. `null` = el video entero. */
   trim: { start: number; end: number } | null;
+  /**
+   * Lo que se ve alrededor del video cuando no llena su hueco, en #rrggbb.
+   * Negro si no se dice; el hilo lo pide blanco.
+   */
+  background?: string;
 }
 
 export interface EncodeHandlers {
@@ -108,7 +113,11 @@ async function engine(handlers: EncodeHandlers): Promise<FFmpeg> {
  * No hace falta recortarlo al hueco de la plantilla: por encima y por debajo
  * del hueco la plantilla es negro opaco, asi que lo que se salga queda tapado.
  */
-function place(rect: Rect, canvas: { w: number; h: number }): { crop: string; pad: string } {
+function place(
+  rect: Rect,
+  canvas: { w: number; h: number },
+  background: string,
+): { crop: string; pad: string } {
   const cx = Math.max(0, -rect.x);
   const cy = Math.max(0, -rect.y);
   const px = Math.max(0, rect.x);
@@ -117,7 +126,7 @@ function place(rect: Rect, canvas: { w: number; h: number }): { crop: string; pa
   const ch = Math.min(rect.h - cy, canvas.h - py);
   return {
     crop: `crop=${cw}:${ch}:${cx}:${cy}`,
-    pad: `pad=${canvas.w}:${canvas.h}:${px}:${py}:color=black`,
+    pad: `pad=${canvas.w}:${canvas.h}:${px}:${py}:color=0x${background.replace("#", "")}`,
   };
 }
 
@@ -129,7 +138,7 @@ function extension(name: string): string {
 
 function args(input: string, audio: "copy" | "aac", job: EncodeJob): string[] {
   const { rect } = job;
-  const { crop, pad } = place(rect, job.canvas);
+  const { crop, pad } = place(rect, job.canvas, job.background ?? "#000000");
   // Escalar, quitar lo que se sale, colocar sobre el lienzo negro y pegarle la
   // plantilla encima. Es exactamente lo que hace la previa en el canvas.
   //

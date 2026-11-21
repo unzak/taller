@@ -156,7 +156,10 @@ con el aro **del color del resaltado**.
 - **Negro sobre el texto**: cuánto negro macizo queda entre el texto y el
   difuminado, o sea, dónde empieza a verse la imagen.
 - **Imagen o vídeo**: se arrastra para encuadrar; la rueda o el pellizco lo
-  amplían por donde se apunta. Se voltea con el botón de la esquina.
+  amplían por donde se apunta. Se voltea con el botón de la esquina. También
+  se puede **achicar** por debajo de su encaje, hasta el 30 %, para que quepa
+  entera: lo que queda libre en su hueco sale en **blanco**, en la previa, en
+  el PNG y en el MP4, y la imagen se mueve por dentro del hueco sin salirse.
 - **Cuerpo de letra**: con su barra, o con la rueda y el pellizco sobre el texto.
 
 Cada barra que se haya movido de su sitio enseña a su lado un **«↺ por
